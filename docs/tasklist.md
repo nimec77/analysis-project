@@ -4,7 +4,7 @@
 
 | Status | Phase | Description | Files | Depends on |
 |--------|-------|-------------|-------|------------|
-| :white_circle: | 1 | `String` -> `&str` in `Parser` trait | `src/parse.rs` | — |
+| :green_circle: | 1 | `String` -> `&str` in `Parser` trait | `src/parse.rs` | — |
 | :white_circle: | 2 | Remove `Rc<RefCell>` | `src/lib.rs` | — |
 | :white_circle: | 3 | Remove `unsafe` transmute | `src/lib.rs` | Phase 2 |
 | :white_circle: | 4 | Generic `R: Read` instead of trait object | `src/lib.rs`, `src/main.rs` | Phase 2 |
@@ -19,15 +19,17 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
+**Current Phase:** 2
+
 ---
 
 ## Phase 1: `String` -> `&str` in `Parser` trait
 
-- [ ] Change `Parser` trait to operate on `&str` with lifetimes instead of `String`
-- [ ] Update all combinator implementations (`Tag`, `Alt`, `Map`, `Delimited`, `Preceded`, `Permutation`, `List`, `Take`, etc.)
-- [ ] Update `Parsable` trait and all implementations
-- [ ] Remove now-unnecessary `.clone()` calls on input strings
-- [ ] Adapt all 15 tests in `parse.rs`: remove `.into()` on parser inputs and on `remaining` in `Ok((...))` expectations; keep `.into()` for owned `String` output values (e.g. `Unquote`, `AssetDsc.id`, `Backet.asset_id`)
+- [x] Change `Parser` trait to operate on `&str` with lifetimes instead of `String`
+- [x] Update all combinator implementations (`Tag`, `Alt`, `Map`, `Delimited`, `Preceded`, `Permutation`, `List`, `Take`, etc.)
+- [x] Update `Parsable` trait and all implementations
+- [x] Remove now-unnecessary `.clone()` calls on input strings
+- [x] Adapt all 15 tests in `parse.rs`: remove `.into()` on parser inputs and on `remaining` in `Ok((...))` expectations; keep `.into()` for owned `String` output values (e.g. `Unquote`, `AssetDsc.id`, `Backet.asset_id`)
 
 **Hint:** `src/parse.rs:5` — `// подсказка: здесь можно переделать` (the `Parser` trait definition)
 
