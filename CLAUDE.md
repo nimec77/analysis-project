@@ -29,7 +29,7 @@ Key data types in the log model hierarchy: `LogLine` → `LogKind` → `{SystemL
 
 ### Code Conventions
 
-- Comments and documentation are in **Russian**.
+- Existing comments in Russian are left as-is. All new comments and documentation are in **English**.
 - Lines marked `// подсказка:` ("hint") indicate known technical debt left intentionally for refactoring (e.g., unsafe transmute in `LogIterator::new`, unnecessary `Rc<RefCell>`, `u8` mode constants instead of enums, `panic!` in library code).
 - Parser combinator arities are implemented via tuple impls (e.g., `all2`, `all3`, `all4`, `alt2`..`alt8`) since Rust lacks variadic generics.
 - `LOG_LINE_PARSER` is a lazily-initialized singleton (`OnceLock`) — the single entry point for parsing log lines.
