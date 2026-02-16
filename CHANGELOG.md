@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 6: `match` instead of `if` chain
+
+**Scope:** `src/lib.rs`
+
+Replaced the `if mode == ReadMode::All { ... } else if mode == ReadMode::Errors { ... } else if mode == ReadMode::Exchanges { ... } else { panic!(...) }` chain in `read_log()` with an exhaustive `match &mode` expression containing three explicit arms and no wildcard/default arm. This makes the filtering logic idiomatic Rust and enables compiler-verified exhaustiveness. The `panic!("unknown mode {:?}", mode)` arm and both hint comments (`// подсказка: лучше match` and `// подсказка: паниковать в библиотечном коде - нехорошо`) were removed as a natural consequence of the exhaustive match. Added two new tests (`test_errors_mode` and `test_exchanges_mode`) to exercise the `ReadMode::Errors` and `ReadMode::Exchanges` filter paths. All existing tests pass unchanged; no behavior changes.
+
 ## Phase 5: `u8` constants -> `enum ReadMode`
 
 **Scope:** `src/lib.rs`, `src/main.rs`

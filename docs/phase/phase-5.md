@@ -4,9 +4,9 @@
 
 ## Tasks
 
-- [ ] 5.1 Replace `READ_MODE_ALL`, `READ_MODE_ERRORS`, `READ_MODE_EXCHANGES` constants with `enum ReadMode`
-- [ ] 5.2 Update `read_log()` and all call sites
-- [ ] 5.3 Adapt `test_all` in `lib.rs`: replace `READ_MODE_ALL` with `ReadMode::All`
+- [x] 5.1 Replace `READ_MODE_ALL`, `READ_MODE_ERRORS`, `READ_MODE_EXCHANGES` constants with `enum ReadMode`
+- [x] 5.2 Update `read_log()` and all call sites
+- [x] 5.3 Adapt `test_all` in `lib.rs`: replace `READ_MODE_ALL` with `ReadMode::All`
 
 ## Acceptance Criteria
 

@@ -61,37 +61,24 @@ pub fn read_log(input: impl Read, mode: ReadMode, request_ids: Vec<u32>) -> Vec<
                 }
             }
             request_id_found
-        }
-        // подсказка: лучше match
-        && if mode == ReadMode::All {
-                true
-            }
-            else if mode == ReadMode::Errors {
-                matches!(
-                    &log.kind,
-                    LogKind::System(
-                        SystemLogKind::Error(_)) | LogKind::App(AppLogKind::Error(_)
-                    )
-                )
-            }
-            else if mode == ReadMode::Exchanges {
-                matches!(
-                    &log.kind,
-                    LogKind::App(AppLogKind::Journal(
-                        AppLogJournalKind::BuyAsset(_)
+        } && match &mode {
+            ReadMode::All => true,
+            ReadMode::Errors => matches!(
+                &log.kind,
+                LogKind::System(SystemLogKind::Error(_)) | LogKind::App(AppLogKind::Error(_))
+            ),
+            ReadMode::Exchanges => matches!(
+                &log.kind,
+                LogKind::App(AppLogKind::Journal(
+                    AppLogJournalKind::BuyAsset(_)
                         | AppLogJournalKind::SellAsset(_)
-                        | AppLogJournalKind::CreateUser{..}
-                        | AppLogJournalKind::RegisterAsset{..}
+                        | AppLogJournalKind::CreateUser { .. }
+                        | AppLogJournalKind::RegisterAsset { .. }
                         | AppLogJournalKind::DepositCash(_)
                         | AppLogJournalKind::WithdrawCash(_)
-                    ))
-                )
-            }
-            else {
-                // подсказка: паниковать в библиотечном коде - нехорошо
-                panic!("unknown mode {:?}", mode)
-            }
-        {
+                ))
+            ),
+        } {
             collected.push(log);
         }
     }
@@ -179,5 +166,58 @@ App::Journal BuyAsset UserBacket{"user_id":"Alice","backet":Backet{"asset_id":"m
         // 2 для начала и конца строки (чтобы первая и последняя кавычки на отдельных строках были)
         // второе число - число пустых строк, которые оставлены для удобства чтения
         assert_eq!(all_parsed.len(), SOURCE.lines().count() - 2 - 7);
+    }
+
+    #[test]
+    fn test_errors_mode() {
+        // SOURCE1 has requestid=1; filter by that ID so the mode filter is exercised
+        let errors_from_source1 = read_log(SOURCE1.as_bytes(), ReadMode::Errors, vec![1]);
+        assert_eq!(errors_from_source1.len(), 1);
+
+        // Filter by all request IDs present in SOURCE so mode filtering is applied.
+        // Error lines in SOURCE: requestid 1 (2 errors), 2 (2 errors), 7 (2 errors), 8 (1 error) = 7 total
+        let all_ids = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let errors = read_log(SOURCE.as_bytes(), ReadMode::Errors, all_ids);
+        assert_eq!(errors.len(), 7);
+        for log in &errors {
+            assert!(
+                matches!(
+                    &log.kind,
+                    LogKind::System(SystemLogKind::Error(_)) | LogKind::App(AppLogKind::Error(_))
+                ),
+                "Expected error log kind, got {:?}",
+                log.kind
+            );
+        }
+    }
+
+    #[test]
+    fn test_exchanges_mode() {
+        // SOURCE1 has requestid=1, which is a System::Error -- not a journal entry
+        let exchanges_from_source1 = read_log(SOURCE1.as_bytes(), ReadMode::Exchanges, vec![1]);
+        assert_eq!(exchanges_from_source1.len(), 0);
+
+        // Filter by all request IDs present in SOURCE so mode filtering is applied.
+        // Journal entries: CreateUser (rid 3, 4), RegisterAsset (rid 5, 6), SellAsset (rid 9), BuyAsset (rid 10) = 6 total
+        let all_ids = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let exchanges = read_log(SOURCE.as_bytes(), ReadMode::Exchanges, all_ids);
+        assert_eq!(exchanges.len(), 6);
+        for log in &exchanges {
+            assert!(
+                matches!(
+                    &log.kind,
+                    LogKind::App(AppLogKind::Journal(
+                        AppLogJournalKind::BuyAsset(_)
+                            | AppLogJournalKind::SellAsset(_)
+                            | AppLogJournalKind::CreateUser { .. }
+                            | AppLogJournalKind::RegisterAsset { .. }
+                            | AppLogJournalKind::DepositCash(_)
+                            | AppLogJournalKind::WithdrawCash(_)
+                    ))
+                ),
+                "Expected exchange/journal log kind, got {:?}",
+                log.kind
+            );
+        }
     }
 }
