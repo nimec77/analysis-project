@@ -1,5 +1,6 @@
 pub mod parse;
 use parse::*;
+use std::io::Read;
 
 // подсказка: лучше использовать enum и match
 /// Режим чтения из логов всего подряд
@@ -9,23 +10,16 @@ pub const READ_MODE_ERRORS: u8 = 1;
 /// Режим чтения из логов только операций, касающихся деген
 pub const READ_MODE_EXCHANGES: u8 = 2;
 
-/// Для `Box<dyn много трейтов, помимо auto-трейтов>`, (`rustc E0225`)
-/// `only auto traits can be used as additional traits in a trait object`
-/// `consider creating a new trait with all of these as supertraits and using that trait here instead`
-pub trait MyReader: std::io::Read + std::fmt::Debug + 'static {}
-impl<T: std::io::Read + std::fmt::Debug + 'static> MyReader for T {}
-// подсказка: вместо trait-объекта можно дженерик
 /// Итератор, на выходе которого - строки распарсенной структуры данных
-#[derive(Debug)]
-struct LogIterator {
+struct LogIterator<R: Read> {
     #[allow(clippy::type_complexity)]
     lines: std::iter::Filter<
-        std::io::Lines<std::io::BufReader<Box<dyn MyReader>>>,
+        std::io::Lines<std::io::BufReader<R>>,
         fn(&Result<String, std::io::Error>) -> bool,
     >,
 }
-impl LogIterator {
-    fn new(reader: Box<dyn MyReader>) -> Self {
+impl<R: Read> LogIterator<R> {
+    fn new(reader: R) -> Self {
         use std::io::BufRead;
         Self {
             lines: std::io::BufReader::with_capacity(4096, reader)
@@ -40,7 +34,7 @@ impl LogIterator {
         }
     }
 }
-impl Iterator for LogIterator {
+impl<R: Read> Iterator for LogIterator<R> {
     type Item = parse::LogLine;
     fn next(&mut self) -> Option<Self::Item> {
         let line = self.lines.next()?.ok()?;
@@ -50,7 +44,7 @@ impl Iterator for LogIterator {
 }
 
 /// Принимает поток байт, отдаёт отфильтрованные и распарсенные логи
-pub fn read_log(input: Box<dyn MyReader>, mode: u8, request_ids: Vec<u32>) -> Vec<LogLine> {
+pub fn read_log(input: impl Read, mode: u8, request_ids: Vec<u32>) -> Vec<LogLine> {
     let logs = LogIterator::new(input);
     let mut collected = Vec::new();
     // подсказка: можно обойтись итераторами
@@ -173,10 +167,8 @@ App::Journal BuyAsset UserBacket{"user_id":"Alice","backet":Backet{"asset_id":"m
 
     #[test]
     fn test_all() {
-        let reader1: Box<dyn MyReader> = Box::new(SOURCE1.as_bytes());
-        assert_eq!(read_log(reader1, READ_MODE_ALL, vec![]).len(), 1);
-        let reader: Box<dyn MyReader> = Box::new(SOURCE.as_bytes());
-        let all_parsed = read_log(reader, READ_MODE_ALL, vec![]);
+        assert_eq!(read_log(SOURCE1.as_bytes(), READ_MODE_ALL, vec![]).len(), 1);
+        let all_parsed = read_log(SOURCE.as_bytes(), READ_MODE_ALL, vec![]);
         println!("all parsed:");
         all_parsed
             .iter()
