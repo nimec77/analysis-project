@@ -63,11 +63,8 @@ fn main() {
         filename,
         std::env::current_dir().unwrap().to_string_lossy()
     );
-    let file: std::rc::Rc<std::cell::RefCell<Box<dyn analysis::MyReader>>> = std::rc::Rc::new(
-        std::cell::RefCell::new(Box::new(std::fs::File::open(filename).unwrap())),
-    );
-
-    let logs = analysis::read_log(file.clone(), analysis::READ_MODE_ALL, vec![]);
+    let file: Box<dyn analysis::MyReader> = Box::new(std::fs::File::open(filename).unwrap());
+    let logs = analysis::read_log(file, analysis::READ_MODE_ALL, vec![]);
     println!("got logs:");
     logs.iter().for_each(|parsed| println!("  {:?}", parsed));
 }

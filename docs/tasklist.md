@@ -5,7 +5,7 @@
 | Status | Phase | Description | Files | Depends on |
 |--------|-------|-------------|-------|------------|
 | :green_circle: | 1 | `String` -> `&str` in `Parser` trait | `src/parse.rs` | — |
-| :white_circle: | 2 | Remove `Rc<RefCell>` | `src/lib.rs` | — |
+| :green_circle: | 2 | Remove `Rc<RefCell>` | `src/lib.rs` | — |
 | :white_circle: | 3 | Remove `unsafe` transmute | `src/lib.rs` | Phase 2 |
 | :white_circle: | 4 | Generic `R: Read` instead of trait object | `src/lib.rs`, `src/main.rs` | Phase 2 |
 | :white_circle: | 5 | `u8` constants -> `enum ReadMode` | `src/lib.rs` | — |
@@ -39,10 +39,10 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 2: Remove `Rc<RefCell>`
 
-- [ ] Remove `Rc<RefCell<Box<dyn MyReader>>>` wrapping from `LogIterator`
-- [ ] Give `LogIterator` direct ownership of the reader
-- [ ] Remove `RefMutWrapper` and `MyReader` trait if they become unused
-- [ ] Adapt `test_all` in `lib.rs`: remove `Rc<RefCell<Box<dyn MyReader>>>` wrapping, pass reader directly to `read_log()`
+- [x] Remove `Rc<RefCell<Box<dyn MyReader>>>` wrapping from `LogIterator`
+- [x] Give `LogIterator` direct ownership of the reader
+- [x] Remove `RefMutWrapper` and `MyReader` trait if they become unused
+- [x] Adapt `test_all` in `lib.rs`: remove `Rc<RefCell<Box<dyn MyReader>>>` wrapping, pass reader directly to `read_log()`
 
 **Hint:** `src/lib.rs:71` — `// подсказка: RefCell вообще не нужен`
 **Hint:** `src/lib.rs:40` — `// подсказка: unsafe избыточен, да и весь rc - тоже`
