@@ -7,7 +7,7 @@
 | :green_circle: | 1 | `String` -> `&str` in `Parser` trait | `src/parse.rs` | — |
 | :green_circle: | 2 | Remove `Rc<RefCell>` | `src/lib.rs` | — |
 | :green_circle: | 3 | Remove `unsafe` transmute | `src/lib.rs` | Phase 2 |
-| :white_circle: | 4 | Generic `R: Read` instead of trait object | `src/lib.rs`, `src/main.rs` | Phase 2 |
+| :green_circle: | 4 | Generic `R: Read` instead of trait object | `src/lib.rs`, `src/main.rs` | Phase 2 |
 | :white_circle: | 5 | `u8` constants -> `enum ReadMode` | `src/lib.rs` | — |
 | :white_circle: | 6 | `match` instead of `if` chain | `src/lib.rs` | Phase 5 |
 | :white_circle: | 7 | `Result` instead of `panic!` | `src/lib.rs` | Phase 5 |
@@ -19,7 +19,7 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 4
+**Current Phase:** 5
 
 ---
 
@@ -65,10 +65,10 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 4: Generic `R: Read` instead of trait object
 
-- [ ] Make `LogIterator` generic: `LogIterator<R: Read>`
-- [ ] Remove `Box<dyn MyReader>` / `MyReader` trait
-- [ ] Update `read_log()` signature to accept `impl Read`
-- [ ] Adapt `main.rs` to the new signature
+- [x] Make `LogIterator` generic: `LogIterator<R: Read>`
+- [x] Remove `Box<dyn MyReader>` / `MyReader` trait
+- [x] Update `read_log()` signature to accept `impl Read`
+- [x] Adapt `main.rs` to the new signature
 
 **Hint:** `src/lib.rs:30` — `// подсказка: вместо trait-объекта можно дженерик`
 

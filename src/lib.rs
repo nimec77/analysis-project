@@ -2,13 +2,16 @@ pub mod parse;
 use parse::*;
 use std::io::Read;
 
-// подсказка: лучше использовать enum и match
-/// Режим чтения из логов всего подряд
-pub const READ_MODE_ALL: u8 = 0;
-/// Режим чтения из логов только ошибок
-pub const READ_MODE_ERRORS: u8 = 1;
-/// Режим чтения из логов только операций, касающихся деген
-pub const READ_MODE_EXCHANGES: u8 = 2;
+/// Read mode for filtering log entries.
+#[derive(Debug, PartialEq)]
+pub enum ReadMode {
+    /// Return all log entries.
+    All,
+    /// Return only error entries (System::Error and App::Error).
+    Errors,
+    /// Return only exchange/journal operation entries.
+    Exchanges,
+}
 
 /// Итератор, на выходе которого - строки распарсенной структуры данных
 struct LogIterator<R: Read> {
@@ -44,7 +47,7 @@ impl<R: Read> Iterator for LogIterator<R> {
 }
 
 /// Принимает поток байт, отдаёт отфильтрованные и распарсенные логи
-pub fn read_log(input: impl Read, mode: u8, request_ids: Vec<u32>) -> Vec<LogLine> {
+pub fn read_log(input: impl Read, mode: ReadMode, request_ids: Vec<u32>) -> Vec<LogLine> {
     let logs = LogIterator::new(input);
     let mut collected = Vec::new();
     // подсказка: можно обойтись итераторами
@@ -60,10 +63,10 @@ pub fn read_log(input: impl Read, mode: u8, request_ids: Vec<u32>) -> Vec<LogLin
             request_id_found
         }
         // подсказка: лучше match
-        && if mode == READ_MODE_ALL {
+        && if mode == ReadMode::All {
                 true
             }
-            else if mode == READ_MODE_ERRORS {
+            else if mode == ReadMode::Errors {
                 matches!(
                     &log.kind,
                     LogKind::System(
@@ -71,7 +74,7 @@ pub fn read_log(input: impl Read, mode: u8, request_ids: Vec<u32>) -> Vec<LogLin
                     )
                 )
             }
-            else if mode == READ_MODE_EXCHANGES {
+            else if mode == ReadMode::Exchanges {
                 matches!(
                     &log.kind,
                     LogKind::App(AppLogKind::Journal(
@@ -86,7 +89,7 @@ pub fn read_log(input: impl Read, mode: u8, request_ids: Vec<u32>) -> Vec<LogLin
             }
             else {
                 // подсказка: паниковать в библиотечном коде - нехорошо
-                panic!("unknown mode {}", mode)
+                panic!("unknown mode {:?}", mode)
             }
         {
             collected.push(log);
@@ -167,8 +170,8 @@ App::Journal BuyAsset UserBacket{"user_id":"Alice","backet":Backet{"asset_id":"m
 
     #[test]
     fn test_all() {
-        assert_eq!(read_log(SOURCE1.as_bytes(), READ_MODE_ALL, vec![]).len(), 1);
-        let all_parsed = read_log(SOURCE.as_bytes(), READ_MODE_ALL, vec![]);
+        assert_eq!(read_log(SOURCE1.as_bytes(), ReadMode::All, vec![]).len(), 1);
+        let all_parsed = read_log(SOURCE.as_bytes(), ReadMode::All, vec![]);
         println!("all parsed:");
         all_parsed
             .iter()

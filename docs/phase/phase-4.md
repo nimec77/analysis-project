@@ -4,10 +4,10 @@
 
 ## Tasks
 
-- [ ] 4.1 Make `LogIterator` generic: `LogIterator<R: Read>`
-- [ ] 4.2 Remove `Box<dyn MyReader>` / `MyReader` trait
-- [ ] 4.3 Update `read_log()` signature to accept `impl Read`
-- [ ] 4.4 Adapt `main.rs` to the new signature
+- [x] 4.1 Make `LogIterator` generic: `LogIterator<R: Read>`
+- [x] 4.2 Remove `Box<dyn MyReader>` / `MyReader` trait
+- [x] 4.3 Update `read_log()` signature to accept `impl Read`
+- [x] 4.4 Adapt `main.rs` to the new signature
 
 ## Acceptance Criteria
 
