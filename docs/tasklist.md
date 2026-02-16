@@ -6,7 +6,7 @@
 |--------|-------|-------------|-------|------------|
 | :green_circle: | 1 | `String` -> `&str` in `Parser` trait | `src/parse.rs` | — |
 | :green_circle: | 2 | Remove `Rc<RefCell>` | `src/lib.rs` | — |
-| :white_circle: | 3 | Remove `unsafe` transmute | `src/lib.rs` | Phase 2 |
+| :green_circle: | 3 | Remove `unsafe` transmute | `src/lib.rs` | Phase 2 |
 | :white_circle: | 4 | Generic `R: Read` instead of trait object | `src/lib.rs`, `src/main.rs` | Phase 2 |
 | :white_circle: | 5 | `u8` constants -> `enum ReadMode` | `src/lib.rs` | — |
 | :white_circle: | 6 | `match` instead of `if` chain | `src/lib.rs` | Phase 5 |
@@ -19,7 +19,7 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 2
+**Current Phase:** 4
 
 ---
 
@@ -53,7 +53,7 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 3: Remove `unsafe` transmute
 
-- [ ] Replace the `unsafe { transmute(...) }` with safe code (possible once `Rc<RefCell>` is gone)
+- [x] Replace the `unsafe { transmute(...) }` with safe code (possible once `Rc<RefCell>` is gone)
 
 **Hint:** `src/lib.rs:40` — `// подсказка: unsafe избыточен, да и весь rc - тоже`
 

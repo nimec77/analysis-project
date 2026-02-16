@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 3: Remove `unsafe` transmute
+
+**Scope:** Verification only (no source code changes)
+
+Formally verified that the `unsafe { transmute(...) }` block in `LogIterator::new()` was fully removed as a side-effect of Phase 2. Confirmed zero occurrences of `unsafe` and `transmute` across all source files, confirmed the associated hint comment (`// подсказка: unsafe избыточен, да и весь rc - тоже`) was already removed, and validated that all 16 tests pass and CLI output is unchanged. No Rust source code was modified in this phase.
+
 ## Phase 2: Remove `Rc<RefCell>`
 
 **Scope:** `src/lib.rs`, `src/main.rs`
