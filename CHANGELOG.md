@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 13: Bug Fix + Dead Code Cleanup
+
+**Scope:** `src/parse.rs`
+
+Fixed a copy-paste bug in the `WithdrawCash` parser arm where the mapping closure incorrectly produced `AppLogJournalKind::DepositCash(user_cash)` instead of `AppLogJournalKind::WithdrawCash(user_cash)`, causing `WithdrawCash` journal entries to be silently misclassified as `DepositCash` in the parsed output. Added a `test_withdraw_cash` regression test that parses a `WithdrawCash` log line and asserts the result is `AppLogJournalKind::WithdrawCash(...)`. Removed five unused code items from the parser module: the `AsIs` struct and its `Parser` impl (9 lines), the `all3()` constructor function (7 lines), the `all4()` constructor function (12 lines), the `Either<Left, Right>` enum (5 lines), and the `Status` enum with its `Parsable` impl (23 lines) -- all confirmed unused via project-wide search. The `impl Parser for All<(A0, A1, A2)>` and `impl Parser for All<(A0, A1, A2, A3)>` generic trait implementations were retained. No changes to `src/lib.rs` or `src/main.rs`. No external dependencies added. All 26 tests pass (25 existing + 1 new); no test cases deleted. `cargo run -- example.log` output unchanged.
+
 ## Phase 12: Remove `OnceLock` Singleton
 
 **Scope:** `src/parse.rs`, `src/lib.rs`
