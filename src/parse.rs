@@ -133,15 +133,6 @@ impl Parser for Unquote {
 fn unquote() -> Unquote {
     Unquote
 }
-/// Парсер, возвращающий результат как есть
-#[derive(Debug, Clone)]
-struct AsIs;
-impl Parser for AsIs {
-    type Dest = String;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
-        Ok((&input[input.len()..], input.to_string()))
-    }
-}
 /// Парсер константных строк
 /// (аналог `nom::bytes::complete::tag`)
 #[derive(Debug, Clone)]
@@ -326,13 +317,6 @@ where
             .map(|(remaining, a2)| (remaining, (a0, a1, a2)))
     }
 }
-/// Конструктор [All] для трёх парсеров
-/// (в Rust нет чего-то, вроде variadic templates из C++)
-fn all3<A0: Parser, A1: Parser, A2: Parser>(a0: A0, a1: A1, a2: A2) -> All<(A0, A1, A2)> {
-    All {
-        parser: (a0, a1, a2),
-    }
-}
 impl<A0, A1, A2, A3> Parser for All<(A0, A1, A2, A3)>
 where
     A0: Parser,
@@ -349,18 +333,6 @@ where
             .3
             .parse(remaining)
             .map(|(remaining, a3)| (remaining, (a0, a1, a2, a3)))
-    }
-}
-/// Конструктор [All] для четырёх парсеров
-/// (в Rust нет чего-то, вроде variadic templates из C++)
-fn all4<A0: Parser, A1: Parser, A2: Parser, A3: Parser>(
-    a0: A0,
-    a1: A1,
-    a2: A2,
-    a3: A3,
-) -> All<(A0, A1, A2, A3)> {
-    All {
-        parser: (a0, a1, a2, a3),
     }
 }
 /// Комбинатор, который вытаскивает значения из пары `"ключ":значение,`.
@@ -724,36 +696,6 @@ impl Parsable for AuthData {
         map(take(AUTHDATA_SIZE, stdp::Byte), |authdata| {
             AuthData(authdata.try_into().unwrap_or([0; AUTHDATA_SIZE]))
         })
-    }
-}
-
-/// Конструкция 'либо-либо'
-enum Either<Left, Right> {
-    Left(Left),
-    Right(Right),
-}
-
-/// Статус, которые можно парсить
-enum Status {
-    Ok,
-    Err(String),
-}
-impl Parsable for Status {
-    type Parser = Alt<(
-        Map<Tag, fn(()) -> Self>,
-        Map<Delimited<Tag, Unquote, Tag>, fn(String) -> Self>,
-    )>;
-    fn parser() -> Self::Parser {
-        fn to_ok(_: ()) -> Status {
-            Status::Ok
-        }
-        fn to_err(error: String) -> Status {
-            Status::Err(error)
-        }
-        alt2(
-            map(tag("Ok"), to_ok),
-            map(delimited(tag("Err("), unquote(), tag(")")), to_err),
-        )
     }
 }
 
