@@ -10,7 +10,7 @@
 | :green_circle: | 4 | Generic `R: Read` instead of trait object | `src/lib.rs`, `src/main.rs` | Phase 2 |
 | :green_circle: | 5 | `u8` constants -> `enum ReadMode` | `src/lib.rs` | — |
 | :green_circle: | 6 | `match` instead of `if` chain | `src/lib.rs` | Phase 5 |
-| :white_circle: | 7 | `Result` instead of `panic!` | `src/lib.rs` | Phase 5 |
+| :green_circle: | 7 | `Result` instead of `panic!` | `src/lib.rs` | Phase 5 |
 | :white_circle: | 8 | Generic `just_parse<T>()` | `src/parse.rs` | — |
 | :white_circle: | 9 | Loops -> iterators | `src/lib.rs` | — |
 | :white_circle: | 10 | `Box` the large enum variant | `src/parse.rs` | — |
@@ -19,7 +19,7 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 7
+**Current Phase:** 8
 
 ---
 
@@ -104,9 +104,9 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 7: `Result` instead of `panic!`
 
-- [ ] Replace `panic!` on unknown mode with exhaustive `match` (no default arm needed after Phase 5)
-- [ ] Return `Result` from `read_log()` for any remaining fallible operations
-- [ ] Adapt `test_all` in `lib.rs` if `read_log()` now returns `Result`: unwrap or use `?` in test
+- [x] Replace `panic!` on unknown mode with exhaustive `match` (no default arm needed after Phase 5)
+- [x] Return `Result` from `read_log()` for any remaining fallible operations
+- [x] Adapt `test_all` in `lib.rs` if `read_log()` now returns `Result`: unwrap or use `?` in test
 
 **Hint:** `src/lib.rs:114` — `// подсказка: паниковать в библиотечном коде - нехорошо`
 

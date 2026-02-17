@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 8: Generic `just_parse<T>()`
+
+**Scope:** `src/parse.rs`, `src/main.rs`
+
+Collapsed six nearly identical `just_parse_*` / `just_user_*` wrapper functions (`just_parse_asset_dsc`, `just_parse_backet`, `just_user_cash`, `just_user_backet`, `just_user_backets`, `just_parse_anouncements`) into a single generic `pub fn just_parse<T: Parsable>(input: &str) -> Result<(&str, T), ()>` function. Made the `Parsable` and `Parser` traits public to satisfy Rust's visibility rules for the generic function's trait bound (E0445). Updated the sole external call site in `main.rs` to use turbofish syntax (`just_parse::<Announcements>(...)`). Removed the hint comments `// просто обёртки` and `// подсказка: почему бы не заменить на один дженерик?`. The generic function works for all 17 types implementing `Parsable`, not just the 6 that previously had dedicated wrappers. Added seven new tests for the generic function. All existing tests pass unchanged; no behavior changes.
+
 ## Phase 7: `Result` instead of `panic!`
 
 **Scope:** `src/lib.rs`, `src/main.rs`

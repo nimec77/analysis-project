@@ -1,12 +1,12 @@
 /// Трейт, чтобы **реализовывать** и **требовать** метод 'распарсь и покажи,
 /// что распарсить осталось'
-trait Parser {
+pub trait Parser {
     type Dest;
     fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()>;
 }
 /// Вспомогательный трейт, чтобы писать собственный десериализатор
 /// (по решаемой задаче - отдалённый аналог `serde::Deserialize`)
-trait Parsable: Sized {
+pub trait Parsable: Sized {
     type Parser: Parser<Dest = Self>;
     fn parser() -> Self::Parser;
 }
@@ -126,7 +126,7 @@ fn do_unquote_non_escaped(input: &str) -> Result<(&str, &str), ()> {
 }
 /// Парсер кавычек
 #[derive(Debug, Clone)]
-struct Unquote;
+pub struct Unquote;
 impl Parser for Unquote {
     type Dest = String;
     fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
@@ -149,7 +149,7 @@ impl Parser for AsIs {
 /// Парсер константных строк
 /// (аналог `nom::bytes::complete::tag`)
 #[derive(Debug, Clone)]
-struct Tag {
+pub struct Tag {
     tag: &'static str,
 }
 impl Parser for Tag {
@@ -181,7 +181,7 @@ fn quoted_tag(tag: &'static str) -> QuotedTag {
 }
 /// Комбинатор, пробрасывающий строку без лидирующих пробелов
 #[derive(Debug, Clone)]
-struct StripWhitespace<T> {
+pub struct StripWhitespace<T> {
     parser: T,
 }
 impl<T: Parser> Parser for StripWhitespace<T> {
@@ -204,7 +204,7 @@ fn strip_whitespace<T: Parser>(parser: T) -> StripWhitespace<T> {
 /// строкой - строка, оставшаяся после парсера3.
 /// (аналог `delimited` из `nom`)
 #[derive(Debug, Clone)]
-struct Delimited<Prefix, T, Suffix> {
+pub struct Delimited<Prefix, T, Suffix> {
     prefix_to_ignore: Prefix,
     dest_parser: T,
     suffix_to_ignore: Suffix,
@@ -244,7 +244,7 @@ where
 /// Комбинатор-отображение. Парсит дочерним парсером, преобразует результат так,
 /// как вызывающему хочется
 #[derive(Debug, Clone)]
-struct Map<T, M> {
+pub struct Map<T, M> {
     parser: T,
     map: M,
 }
@@ -263,7 +263,7 @@ fn map<T: Parser, Dest: Sized, M: Fn(T::Dest) -> Dest>(parser: T, map: M) -> Map
 /// Комбинатор с отбрасываемым префиксом, упрощённая версия [Delimited]
 /// (аналог `preceeded` из `nom`)
 #[derive(Debug, Clone)]
-struct Preceded<Prefix, T> {
+pub struct Preceded<Prefix, T> {
     prefix_to_ignore: Prefix,
     dest_parser: T,
 }
@@ -292,7 +292,7 @@ where
 /// Комбинатор, который требует, чтобы все дочерние парсеры отработали,
 /// (аналог `all` из `nom`)
 #[derive(Debug, Clone)]
-struct All<T> {
+pub struct All<T> {
     parser: T,
 }
 impl<A0, A1> Parser for All<(A0, A1)>
@@ -371,7 +371,7 @@ fn all4<A0: Parser, A1: Parser, A2: Parser, A3: Parser>(
 /// Для простоты реализации, запятая всегда нужна в конце пары ключ-значение,
 /// простое '"ключ":значение' читаться не будет
 #[derive(Debug, Clone)]
-struct KeyValue<T> {
+pub struct KeyValue<T> {
     parser: Delimited<
         All<(StripWhitespace<QuotedTag>, StripWhitespace<Tag>)>,
         StripWhitespace<T>,
@@ -405,7 +405,7 @@ fn key_value<T: Parser>(key: &'static str, value_parser: T) -> KeyValue<T> {
 /// том порядке, в каком `Permutation` был сконструирован
 /// (аналог `permutation` из `nom`)
 #[derive(Debug, Clone)]
-struct Permutation<T> {
+pub struct Permutation<T> {
     parsers: T,
 }
 impl<A0, A1> Parser for Permutation<(A0, A1)>
@@ -506,7 +506,7 @@ fn permutation3<A0: Parser, A1: Parser, A2: Parser>(
 /// скобками.
 /// Для простоты реализации, после каждого элемента списка должна быть запятая
 #[derive(Debug, Clone)]
-struct List<T> {
+pub struct List<T> {
     parser: T,
 }
 impl<T: Parser> Parser for List<T> {
@@ -540,7 +540,7 @@ fn list<T: Parser>(parser: T) -> List<T> {
 /// получен первым из дочерних комбинаторов
 /// (аналог `alt` из `nom`)
 #[derive(Debug, Clone)]
-struct Alt<T> {
+pub struct Alt<T> {
     parser: T,
 }
 impl<A0, A1, Dest> Parser for Alt<(A0, A1)>
@@ -695,7 +695,7 @@ fn alt8<
 
 /// Комбинатор для применения дочернего парсера N раз
 /// (аналог `take` из `nom`)
-struct Take<T> {
+pub struct Take<T> {
     count: usize,
     parser: T,
 }
@@ -934,31 +934,9 @@ impl Parsable for Announcements {
     }
 }
 
-// просто обёртки
-// подсказка: почему бы не заменить на один дженерик?
-/// Обёртка для парсинга [AssetDsc]
-pub fn just_parse_asset_dsc(input: &str) -> Result<(&str, AssetDsc), ()> {
-    <AssetDsc as Parsable>::parser().parse(input)
-}
-/// Обёртка для парсинга [Backet]
-pub fn just_parse_backet(input: &str) -> Result<(&str, Backet), ()> {
-    <Backet as Parsable>::parser().parse(input)
-}
-/// Обёртка для парсинга [UserCash]
-pub fn just_user_cash(input: &str) -> Result<(&str, UserCash), ()> {
-    <UserCash as Parsable>::parser().parse(input)
-}
-/// Обёртка для парсинга [UserBacket]
-pub fn just_user_backet(input: &str) -> Result<(&str, UserBacket), ()> {
-    <UserBacket as Parsable>::parser().parse(input)
-}
-/// Обёртка для парсинга [UserBackets]
-pub fn just_user_backets(input: &str) -> Result<(&str, UserBackets), ()> {
-    <UserBackets as Parsable>::parser().parse(input)
-}
-/// Обёртка для парсинга [Announcements]
-pub fn just_parse_anouncements(input: &str) -> Result<(&str, Announcements), ()> {
-    <Announcements as Parsable>::parser().parse(input)
+/// Generic wrapper for parsing any [Parsable] type.
+pub fn just_parse<T: Parsable>(input: &str) -> Result<(&str, T), ()> {
+    T::parser().parse(input)
 }
 
 /// Все виды логов
@@ -1708,5 +1686,111 @@ mod test {
             ))
         );
         assert_eq!(LogKind::parser().parse(r#"App::Journal BuyAsset UserBacket{"user_id": "Steeve", "backet": Backet{"asset_id":"bayc","count":1,},}"#), Ok(("", LogKind::App(AppLogKind::Journal(AppLogJournalKind::BuyAsset(UserBacket{user_id: "Steeve".into(), backet: Backet{asset_id: "bayc".into(),count:1}}))))));
+    }
+
+    #[test]
+    fn test_just_parse_asset_dsc() {
+        assert_eq!(
+            just_parse::<AssetDsc>(r#"AssetDsc{"id":"usd","dsc":"USA dollar",}"#),
+            Ok((
+                "",
+                AssetDsc {
+                    id: "usd".into(),
+                    dsc: "USA dollar".into()
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_just_parse_backet() {
+        assert_eq!(
+            just_parse::<Backet>(r#"Backet{"asset_id":"milk","count":3,}"#),
+            Ok((
+                "",
+                Backet {
+                    asset_id: "milk".into(),
+                    count: 3
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_just_parse_user_cash() {
+        assert_eq!(
+            just_parse::<UserCash>(r#"UserCash{"user_id":"Alice","count":500,}"#),
+            Ok((
+                "",
+                UserCash {
+                    user_id: "Alice".into(),
+                    count: 500
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_just_parse_user_backet() {
+        assert_eq!(
+            just_parse::<UserBacket>(
+                r#"UserBacket{"user_id":"Bob","backet":Backet{"asset_id":"milk","count":3,},}"#
+            ),
+            Ok((
+                "",
+                UserBacket {
+                    user_id: "Bob".into(),
+                    backet: Backet {
+                        asset_id: "milk".into(),
+                        count: 3
+                    }
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_just_parse_user_backets() {
+        assert_eq!(
+            just_parse::<UserBackets>(
+                r#"UserBackets{"user_id":"Bob","backets":[Backet{"asset_id":"milk","count":3,},],}"#
+            ),
+            Ok((
+                "",
+                UserBackets {
+                    user_id: "Bob".into(),
+                    backets: vec![Backet {
+                        asset_id: "milk".into(),
+                        count: 3
+                    }]
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_just_parse_announcements() {
+        assert_eq!(
+            just_parse::<Announcements>(
+                r#"[UserBackets{"user_id":"Bob","backets":[Backet{"asset_id":"milk","count":3,},],},]"#
+            ),
+            Ok((
+                "",
+                Announcements(vec![UserBackets {
+                    user_id: "Bob".into(),
+                    backets: vec![Backet {
+                        asset_id: "milk".into(),
+                        count: 3
+                    }]
+                }])
+            ))
+        );
+    }
+
+    #[test]
+    fn test_just_parse_error_cases() {
+        assert_eq!(just_parse::<AssetDsc>("invalid input"), Err(()));
+        assert_eq!(just_parse::<Backet>(""), Err(()));
+        assert_eq!(just_parse::<Announcements>("not a list"), Err(()));
     }
 }
