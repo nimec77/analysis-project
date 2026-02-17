@@ -1317,7 +1317,7 @@ impl Parsable for AppLogJournalKind {
                 ),
                 map(
                     preceded(strip_whitespace(tag("WithdrawCash")), UserCash::parser()),
-                    |user_cash| AppLogJournalKind::DepositCash(user_cash),
+                    |user_cash| AppLogJournalKind::WithdrawCash(user_cash),
                 ),
                 map(
                     preceded(strip_whitespace(tag("BuyAsset")), UserBacket::parser()),
@@ -1679,6 +1679,23 @@ mod test {
             ))
         );
         assert_eq!(LogKind::parser().parse(r#"App::Journal BuyAsset UserBacket{"user_id": "Steeve", "backet": Backet{"asset_id":"bayc","count":1,},}"#), Ok(("", LogKind::App(AppLogKind::Journal(AppLogJournalKind::BuyAsset(UserBacket{user_id: "Steeve".into(), backet: Backet{asset_id: "bayc".into(),count:nz(1)}}))))));
+    }
+
+    #[test]
+    fn test_withdraw_cash() {
+        assert_eq!(
+            LogKind::parser()
+                .parse(r#"App::Journal WithdrawCash UserCash{"user_id":"Alice","count":500,}"#),
+            Ok((
+                "",
+                LogKind::App(AppLogKind::Journal(AppLogJournalKind::WithdrawCash(
+                    UserCash {
+                        user_id: "Alice".into(),
+                        count: nz(500)
+                    }
+                )))
+            ))
+        );
     }
 
     #[test]
