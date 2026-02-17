@@ -1,6 +1,7 @@
 pub mod parse;
 use parse::*;
 use std::io::Read;
+use std::num::NonZeroU32;
 
 /// Read mode for filtering log entries.
 #[derive(Debug, PartialEq)]
@@ -60,7 +61,7 @@ impl<R: Read> Iterator for LogIterator<R> {
 pub fn read_log(
     input: impl Read,
     mode: ReadMode,
-    request_ids: Vec<u32>,
+    request_ids: Vec<NonZeroU32>,
 ) -> Result<Vec<LogLine>, std::io::Error> {
     let collected = LogIterator::new(input).collect::<Result<Vec<_>, _>>()?;
     Ok(collected
@@ -181,12 +182,17 @@ App::Journal BuyAsset UserBacket{"user_id":"Alice","backet":Backet{"asset_id":"m
     #[test]
     fn test_errors_mode() {
         // SOURCE1 has requestid=1; filter by that ID so the mode filter is exercised
-        let errors_from_source1 = read_log(SOURCE1.as_bytes(), ReadMode::Errors, vec![1]).unwrap();
+        let errors_from_source1 = read_log(
+            SOURCE1.as_bytes(),
+            ReadMode::Errors,
+            vec![NonZeroU32::new(1).unwrap()],
+        )
+        .unwrap();
         assert_eq!(errors_from_source1.len(), 1);
 
         // Filter by all request IDs present in SOURCE so mode filtering is applied.
         // Error lines in SOURCE: requestid 1 (2 errors), 2 (2 errors), 7 (2 errors), 8 (1 error) = 7 total
-        let all_ids = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let all_ids: Vec<NonZeroU32> = (1..=10).map(|n| NonZeroU32::new(n).unwrap()).collect();
         let errors = read_log(SOURCE.as_bytes(), ReadMode::Errors, all_ids).unwrap();
         assert_eq!(errors.len(), 7);
         for log in &errors {
@@ -204,13 +210,17 @@ App::Journal BuyAsset UserBacket{"user_id":"Alice","backet":Backet{"asset_id":"m
     #[test]
     fn test_exchanges_mode() {
         // SOURCE1 has requestid=1, which is a System::Error -- not a journal entry
-        let exchanges_from_source1 =
-            read_log(SOURCE1.as_bytes(), ReadMode::Exchanges, vec![1]).unwrap();
+        let exchanges_from_source1 = read_log(
+            SOURCE1.as_bytes(),
+            ReadMode::Exchanges,
+            vec![NonZeroU32::new(1).unwrap()],
+        )
+        .unwrap();
         assert_eq!(exchanges_from_source1.len(), 0);
 
         // Filter by all request IDs present in SOURCE so mode filtering is applied.
         // Journal entries: CreateUser (rid 3, 4), RegisterAsset (rid 5, 6), SellAsset (rid 9), BuyAsset (rid 10) = 6 total
-        let all_ids = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let all_ids: Vec<NonZeroU32> = (1..=10).map(|n| NonZeroU32::new(n).unwrap()).collect();
         let exchanges = read_log(SOURCE.as_bytes(), ReadMode::Exchanges, all_ids).unwrap();
         assert_eq!(exchanges.len(), 6);
         for log in &exchanges {

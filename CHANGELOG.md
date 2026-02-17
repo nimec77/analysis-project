@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 11: `NonZeroU32` Tight Type
+
+**Scope:** `src/parse.rs`, `src/lib.rs`
+
+Replaced the `u32` type used for `request_id` with `std::num::NonZeroU32` throughout the codebase, encoding the "request IDs are never zero" invariant directly in the type system. The `stdp::U32` parser's `type Dest` was changed from `u32` to `NonZeroU32`, and the runtime `if value == 0 { return Err(()); }` check was replaced with `NonZeroU32::new(value).ok_or(())?`. The `LogLine::request_id` field type was updated from `u32` to `std::num::NonZeroU32`, and the `Parsable` impl's function pointer type was updated from `fn((LogKind, u32)) -> Self` to `fn((LogKind, std::num::NonZeroU32)) -> Self`. The `read_log()` parameter was changed from `request_ids: Vec<u32>` to `request_ids: Vec<NonZeroU32>`. All test call sites were updated to construct `NonZeroU32` values; a helper `fn nz()` was added in the parse test module for conciseness. The three-line hint comment block (`// подсказка: вместо if можно использовать tight-тип std::num::NonZeroU32`) and the runtime zero check were removed. No changes to `src/main.rs` (empty `vec![]` type-infers correctly). No external dependencies added. All existing 25 tests pass unchanged; no behavior changes.
+
 ## Phase 10: Box the Large Enum Variant
 
 **Scope:** `src/parse.rs`

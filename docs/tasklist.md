@@ -13,13 +13,13 @@
 | :green_circle: | 7 | `Result` instead of `panic!` | `src/lib.rs` | Phase 5 |
 | :green_circle: | 8 | Generic `just_parse<T>()` | `src/parse.rs` | — |
 | :green_circle: | 9 | Loops -> iterators | `src/lib.rs` | — |
-| :white_circle: | 10 | `Box` the large enum variant | `src/parse.rs` | — |
+| :green_circle: | 10 | `Box` the large enum variant | `src/parse.rs` | — |
 | :white_circle: | 11 | `NonZeroU32` tight type | `src/parse.rs` | — |
 | :white_circle: | 12 | Remove `OnceLock` singleton | `src/parse.rs`, `src/lib.rs` | Phase 1 |
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 10
+**Current Phase:** 11
 
 ---
 
@@ -138,8 +138,8 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 10: `Box` the large enum variant
 
-- [ ] Wrap `AuthData` (or whichever variant is oversized) in `Box<>` to reduce `LogKind` stack size
-- [ ] Adapt `test_authdata` and `test_log_kind` in `parse.rs`: wrap `AuthData(...)` in `Box::new(...)` in expected values where the variant is `Connect(Box<AuthData>)`
+- [x] Wrap `AuthData` (or whichever variant is oversized) in `Box<>` to reduce `LogKind` stack size
+- [x] Adapt `test_authdata` and `test_log_kind` in `parse.rs`: wrap `AuthData(...)` in `Box::new(...)` in expected values where the variant is `Connect(Box<AuthData>)`
 
 **Hint:** `src/parse.rs:621` — `// подсказка: довольно много места на стэке`
 **Hint:** `src/parse.rs:852` — `// подсказка: а поля не слишком много места на стэке занимают?`
