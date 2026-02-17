@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 7: `Result` instead of `panic!`
+
+**Scope:** `src/lib.rs`, `src/main.rs`
+
+Converted `read_log()` from returning `Vec<LogLine>` to `Result<Vec<LogLine>, std::io::Error>`, and changed `LogIterator`'s `Item` type from `LogLine` to `Result<LogLine, std::io::Error>` so that I/O errors from `BufReader::lines()` are propagated to callers instead of being silently swallowed by `.ok()?`. The chained `.ok()?` calls in `LogIterator::next()` were replaced with a `loop`/`continue` pattern that explicitly yields `Some(Err(e))` for I/O errors, skips parse errors via `continue`, and yields `Some(Ok(result))` for successfully parsed lines. The `read_log()` loop body now uses `let log = log_result?;` to propagate I/O errors and returns `Ok(collected)` on success. All test functions and the `main.rs` call site were adapted with `.unwrap()`. Parse errors (unparseable log lines) continue to be silently skipped. The Phase 9 hint comment (`// подсказка: можно обойтись итераторами`) is preserved. All existing tests pass unchanged; no behavior changes on the success path.
+
 ## Phase 6: `match` instead of `if` chain
 
 **Scope:** `src/lib.rs`

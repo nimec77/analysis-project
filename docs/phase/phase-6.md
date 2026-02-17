@@ -4,7 +4,7 @@
 
 ## Tasks
 
-- [ ] 6.1 Replace the `if mode == ... else if mode == ...` chain with `match` on `ReadMode`
+- [x] 6.1 Replace the `if mode == ... else if mode == ...` chain with `match` on `ReadMode`
 
 ## Acceptance Criteria
 

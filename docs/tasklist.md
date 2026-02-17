@@ -9,7 +9,7 @@
 | :green_circle: | 3 | Remove `unsafe` transmute | `src/lib.rs` | Phase 2 |
 | :green_circle: | 4 | Generic `R: Read` instead of trait object | `src/lib.rs`, `src/main.rs` | Phase 2 |
 | :green_circle: | 5 | `u8` constants -> `enum ReadMode` | `src/lib.rs` | — |
-| :white_circle: | 6 | `match` instead of `if` chain | `src/lib.rs` | Phase 5 |
+| :green_circle: | 6 | `match` instead of `if` chain | `src/lib.rs` | Phase 5 |
 | :white_circle: | 7 | `Result` instead of `panic!` | `src/lib.rs` | Phase 5 |
 | :white_circle: | 8 | Generic `just_parse<T>()` | `src/parse.rs` | — |
 | :white_circle: | 9 | Loops -> iterators | `src/lib.rs` | — |
@@ -19,7 +19,7 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 6
+**Current Phase:** 7
 
 ---
 
@@ -92,7 +92,7 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 6: `match` instead of `if` chain
 
-- [ ] Replace the `if mode == ... else if mode == ...` chain with `match` on `ReadMode`
+- [x] Replace the `if mode == ... else if mode == ...` chain with `match` on `ReadMode`
 
 **Hint:** `src/lib.rs:88` — `// подсказка: лучше match`
 

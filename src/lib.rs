@@ -38,20 +38,35 @@ impl<R: Read> LogIterator<R> {
     }
 }
 impl<R: Read> Iterator for LogIterator<R> {
-    type Item = parse::LogLine;
+    type Item = Result<parse::LogLine, std::io::Error>;
     fn next(&mut self) -> Option<Self::Item> {
-        let line = self.lines.next()?.ok()?;
-        let (remaining, result) = LOG_LINE_PARSER.parse(line.trim()).ok()?;
-        remaining.trim().is_empty().then_some(result)
+        loop {
+            let line_result = self.lines.next()?;
+            let line = match line_result {
+                Ok(line) => line,
+                Err(e) => return Some(Err(e)),
+            };
+            let Ok((remaining, result)) = LOG_LINE_PARSER.parse(line.trim()) else {
+                continue;
+            };
+            if remaining.trim().is_empty() {
+                return Some(Ok(result));
+            }
+        }
     }
 }
 
 /// Принимает поток байт, отдаёт отфильтрованные и распарсенные логи
-pub fn read_log(input: impl Read, mode: ReadMode, request_ids: Vec<u32>) -> Vec<LogLine> {
+pub fn read_log(
+    input: impl Read,
+    mode: ReadMode,
+    request_ids: Vec<u32>,
+) -> Result<Vec<LogLine>, std::io::Error> {
     let logs = LogIterator::new(input);
     let mut collected = Vec::new();
     // подсказка: можно обойтись итераторами
-    for log in logs {
+    for log_result in logs {
+        let log = log_result?;
         if request_ids.is_empty() || {
             let mut request_id_found = false;
             for request_id in &request_ids {
@@ -82,7 +97,7 @@ pub fn read_log(input: impl Read, mode: ReadMode, request_ids: Vec<u32>) -> Vec<
             collected.push(log);
         }
     }
-    collected
+    Ok(collected)
 }
 
 #[cfg(test)]
@@ -157,8 +172,13 @@ App::Journal BuyAsset UserBacket{"user_id":"Alice","backet":Backet{"asset_id":"m
 
     #[test]
     fn test_all() {
-        assert_eq!(read_log(SOURCE1.as_bytes(), ReadMode::All, vec![]).len(), 1);
-        let all_parsed = read_log(SOURCE.as_bytes(), ReadMode::All, vec![]);
+        assert_eq!(
+            read_log(SOURCE1.as_bytes(), ReadMode::All, vec![])
+                .unwrap()
+                .len(),
+            1
+        );
+        let all_parsed = read_log(SOURCE.as_bytes(), ReadMode::All, vec![]).unwrap();
         println!("all parsed:");
         all_parsed
             .iter()
@@ -171,13 +191,13 @@ App::Journal BuyAsset UserBacket{"user_id":"Alice","backet":Backet{"asset_id":"m
     #[test]
     fn test_errors_mode() {
         // SOURCE1 has requestid=1; filter by that ID so the mode filter is exercised
-        let errors_from_source1 = read_log(SOURCE1.as_bytes(), ReadMode::Errors, vec![1]);
+        let errors_from_source1 = read_log(SOURCE1.as_bytes(), ReadMode::Errors, vec![1]).unwrap();
         assert_eq!(errors_from_source1.len(), 1);
 
         // Filter by all request IDs present in SOURCE so mode filtering is applied.
         // Error lines in SOURCE: requestid 1 (2 errors), 2 (2 errors), 7 (2 errors), 8 (1 error) = 7 total
         let all_ids = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let errors = read_log(SOURCE.as_bytes(), ReadMode::Errors, all_ids);
+        let errors = read_log(SOURCE.as_bytes(), ReadMode::Errors, all_ids).unwrap();
         assert_eq!(errors.len(), 7);
         for log in &errors {
             assert!(
@@ -194,13 +214,14 @@ App::Journal BuyAsset UserBacket{"user_id":"Alice","backet":Backet{"asset_id":"m
     #[test]
     fn test_exchanges_mode() {
         // SOURCE1 has requestid=1, which is a System::Error -- not a journal entry
-        let exchanges_from_source1 = read_log(SOURCE1.as_bytes(), ReadMode::Exchanges, vec![1]);
+        let exchanges_from_source1 =
+            read_log(SOURCE1.as_bytes(), ReadMode::Exchanges, vec![1]).unwrap();
         assert_eq!(exchanges_from_source1.len(), 0);
 
         // Filter by all request IDs present in SOURCE so mode filtering is applied.
         // Journal entries: CreateUser (rid 3, 4), RegisterAsset (rid 5, 6), SellAsset (rid 9), BuyAsset (rid 10) = 6 total
         let all_ids = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let exchanges = read_log(SOURCE.as_bytes(), ReadMode::Exchanges, all_ids);
+        let exchanges = read_log(SOURCE.as_bytes(), ReadMode::Exchanges, all_ids).unwrap();
         assert_eq!(exchanges.len(), 6);
         for log in &exchanges {
             assert!(

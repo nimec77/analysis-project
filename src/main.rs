@@ -64,7 +64,7 @@ fn main() {
         std::env::current_dir().unwrap().to_string_lossy()
     );
     let file = std::fs::File::open(filename).unwrap();
-    let logs = analysis::read_log(file, analysis::ReadMode::All, vec![]);
+    let logs = analysis::read_log(file, analysis::ReadMode::All, vec![]).unwrap();
     println!("got logs:");
     logs.iter().for_each(|parsed| println!("  {:?}", parsed));
 }
