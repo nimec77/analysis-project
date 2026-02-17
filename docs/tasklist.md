@@ -12,14 +12,14 @@
 | :green_circle: | 6 | `match` instead of `if` chain | `src/lib.rs` | Phase 5 |
 | :green_circle: | 7 | `Result` instead of `panic!` | `src/lib.rs` | Phase 5 |
 | :green_circle: | 8 | Generic `just_parse<T>()` | `src/parse.rs` | — |
-| :white_circle: | 9 | Loops -> iterators | `src/lib.rs` | — |
+| :green_circle: | 9 | Loops -> iterators | `src/lib.rs` | — |
 | :white_circle: | 10 | `Box` the large enum variant | `src/parse.rs` | — |
 | :white_circle: | 11 | `NonZeroU32` tight type | `src/parse.rs` | — |
 | :white_circle: | 12 | Remove `OnceLock` singleton | `src/parse.rs`, `src/lib.rs` | Phase 1 |
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 9
+**Current Phase:** 10
 
 ---
 
@@ -128,7 +128,7 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 9: Loops -> iterators
 
-- [ ] Replace manual `for` / `while` loops with iterator chains where idiomatic
+- [x] Replace manual `for` / `while` loops with iterator chains where idiomatic
 
 **Hint:** `src/lib.rs:76` — `// подсказка: можно обойтись итераторами`
 

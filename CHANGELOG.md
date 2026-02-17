@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 10: Box the Large Enum Variant
+
+**Scope:** `src/parse.rs`
+
+Wrapped the oversized `AuthData` payload in `Box<>` at the `AppLogTraceKind::Connect` variant, changing it from `Connect(AuthData)` to `Connect(Box<AuthData>)`. The `AuthData` struct contains a `[u8; 1024]` fixed-size array that previously inflated every enum in the chain (`AppLogTraceKind` -> `AppLogKind` -> `LogKind` -> `LogLine`) to ~1040 bytes on the stack. After boxing, the `Connect` variant stores an 8-byte pointer inline and the 1024-byte payload on the heap, reducing `LogLine` from ~1040 bytes to ~40 bytes. Updated the parser map closure to wrap the parsed `AuthData` in `Box::new()` (the non-capturing closure coerces to the existing `fn(AuthData) -> AppLogTraceKind` function pointer type, so the associated `Parser` type is unchanged). Updated the `test_log_kind` expected value to use `Box::new(AuthData([...]))`. Removed both hint comments (`// подсказка: довольно много места на стэке` and `// подсказка: а поля не слишком много места на стэке занимают?`). No changes to `src/lib.rs` or `src/main.rs`. All existing 25 tests pass unchanged; no behavior changes.
+
 ## Phase 9: Loops to Iterators
 
 **Scope:** `src/lib.rs`
