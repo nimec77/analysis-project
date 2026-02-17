@@ -98,3 +98,61 @@ cargo test -- --nocapture          # all tests with terminal output
 cargo test test_all -- --nocapture # specific test
 cargo run -- example.log           # run CLI
 ```
+
+---
+
+## Phase 2: Optimization and Improvement
+
+After the original 12-phase refactoring is complete, the project enters an optimization phase. External dependencies are now allowed where they provide clear value.
+
+### Applicable Patterns and Improvements
+
+#### 13. Bug fix + dead code cleanup
+Fix the `WithdrawCash` → `DepositCash` mapping bug in `parse.rs`. Remove unused types (`AsIs`, `Either`, `Status`) and unused constructors (`all3`, `all4`).
+
+#### 14. Method and variable names
+Rename genuinely ambiguous names only. The `All` combinator struct → `Tuple` (matching nom's naming — sequential parsing returning a tuple). Rename `stdp` module → `primitives`. Drop the non-idiomatic `do_` prefix from helper functions (`do_unquote` → `unquote_escaped`, `do_unquote_non_escaped` → `unquote_simple`). Arity-suffixed names (`alt2`, `permutation3`) and indexed type parameters (`A0`, `A1`) follow standard Rust tuple-impl patterns (used by nom, serde, tokio) and do not need changing.
+
+#### 15. Encapsulation through modularity and privacy
+Split the 1789-line `parse.rs` into sub-modules using edition 2024 module paths (no `mod.rs`): `parse/combinators.rs` (traits + combinators), `parse/domain.rs` (domain types), `parse/log.rs` (log hierarchy). Refine visibility: constructor functions become `pub(crate)`.
+
+#### 16. Newtype pattern for domain IDs
+Introduce `UserId(String)` and `AssetId(String)` newtypes. Prevents accidentally swapping `user_id` and `asset_id` arguments — the compiler catches misuse at compile time. This is the "tightness measure" applied to domain identifiers.
+
+#### 17. Error handling improvements
+Replace `Result<T, ()>` with a structured `ParseError` type using `thiserror`. Fix `main.rs` panics with proper error messages using `anyhow`.
+
+#### 18. Strategy pattern — LogFilter trait
+Extract filtering logic into a `LogFilter` trait. `ReadMode` implements it, but users can define custom filters without modifying the enum. This is polymorphism through traits applied to the filtering strategy.
+
+#### 19. CLI argument parsing
+Add `clap` for proper CLI argument handling: `--mode`, `--request-id`, `--help`, `--version`.
+
+#### 20. Display trait for log types
+Implement `Display` for log types to produce human-readable output instead of `Debug` formatting.
+
+#### 21. Property-based testing
+Add `proptest` for automated edge-case testing: quote/unquote roundtrips, no-panic invariants, parser suffix guarantees. Add missing unit tests for `WithdrawCash`, `DeleteUser`, `UnregisterAsset`.
+
+#### 22. Parser fluent API (stretch)
+Add method chaining to the `Parser` trait (`.map()`, `.preceded_by()`, `.strip_ws()`) for more readable parser construction. This is the decorator pattern applied to parser combinators.
+
+### Patterns Not Applicable to This Project
+
+| Pattern | Reason |
+|---------|--------|
+| **Observer** | No event-driven or publish-subscribe architecture; linear pipeline |
+| **Builder** | No types with many optional parameters; all types constructed by parsers |
+| **State Pattern** | No state machines or lifecycle transitions |
+| **Marker traits** (Send/Sync) | All types already auto-implement Send+Sync |
+| **PhantomData** | No generic types need phantom lifetime or type parameters |
+| **Tightness Crate** | `NonZeroU32` from std covers the use case; extra crate adds no value |
+
+### New Dependencies
+
+| Crate | Section | Purpose | Phase |
+|-------|---------|---------|-------|
+| `thiserror` 2 | `[dependencies]` | Ergonomic custom error types | 17 |
+| `anyhow` 1 | `[dependencies]` | Error context for `main.rs` | 17 |
+| `clap` 4 | `[dependencies]` | CLI argument parsing | 19 |
+| `proptest` 1 | `[dev-dependencies]` | Property-based testing | 21 |

@@ -2,6 +2,8 @@
 
 ## Progress
 
+### Part 1: Core Refactoring (completed)
+
 | Status | Phase | Description | Files | Depends on |
 |--------|-------|-------------|-------|------------|
 | :green_circle: | 1 | `String` -> `&str` in `Parser` trait | `src/parse.rs` | — |
@@ -17,9 +19,24 @@
 | :green_circle: | 11 | `NonZeroU32` tight type | `src/parse.rs` | — |
 | :green_circle: | 12 | Remove `OnceLock` singleton | `src/parse.rs`, `src/lib.rs` | Phase 1 |
 
+### Part 2: Optimization and Improvement
+
+| Status | Phase | Description | Files | Depends on |
+|--------|-------|-------------|-------|------------|
+| :white_circle: | 13 | Bug fix + dead code cleanup | `src/parse.rs` | — |
+| :white_circle: | 14 | Naming improvements | `src/parse.rs` | — |
+| :white_circle: | 15 | Modularity (split `parse.rs`) | `src/parse.rs`, `src/parse/*.rs` | Phase 14 |
+| :white_circle: | 16 | Newtype pattern (`UserId`, `AssetId`) | `src/parse/*.rs` | Phase 15 |
+| :white_circle: | 17 | Error handling (`ParseError`, `anyhow`) | `src/parse/*.rs`, `src/lib.rs`, `src/main.rs`, `Cargo.toml` | — |
+| :white_circle: | 18 | Strategy pattern (`LogFilter` trait) | `src/lib.rs` | — |
+| :white_circle: | 19 | CLI argument parsing (`clap`) | `src/main.rs`, `Cargo.toml` | Phase 18 |
+| :white_circle: | 20 | `Display` trait for log types | `src/parse/*.rs` | Phase 15 |
+| :white_circle: | 21 | Property-based testing (`proptest`) | `src/parse/*.rs`, `Cargo.toml` | Phase 20 |
+| :white_circle: | 22 | Parser fluent API (stretch) | `src/parse/combinators.rs` | Phase 15 |
+
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 12
+**Current Phase:** 13
 
 ---
 
@@ -167,5 +184,158 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 **Hint:** `src/parse.rs:1144` — `// подсказка: singleton, без которого можно обойтись`
 
 **Depends on:** Phase 1 (lightweight parser construction after `&str` migration)
+
+**Verify:** `cargo test && cargo run -- example.log`
+
+---
+
+## Phase 13: Bug fix + dead code cleanup
+
+- [ ] Fix `WithdrawCash` bug: `src/parse.rs:1320` maps to `DepositCash` instead of `WithdrawCash`
+- [ ] Add dedicated `WithdrawCash` parsing test to prevent regression
+- [ ] Remove unused `AsIs` struct + Parser impl (~line 138)
+- [ ] Remove unused `Either<L,R>` enum (~line 731)
+- [ ] Remove unused `Status` enum + Parsable impl (~line 737)
+- [ ] Remove unused `all3()` constructor (~line 331)
+- [ ] Remove unused `all4()` constructor (~line 356)
+
+**Verify:** `cargo test && cargo run -- example.log`
+
+---
+
+## Phase 14: Naming improvements
+
+- [ ] Rename `All` struct → `Tuple` (matches nom's naming for sequential parsing returning a tuple)
+- [ ] Rename `all2()` → `tuple2()` and update all call sites
+- [ ] Rename `stdp` module → `primitives`
+- [ ] Rename `do_unquote()` → `unquote_escaped()`
+- [ ] Rename `do_unquote_non_escaped()` → `unquote_simple()`
+- [ ] Update all internal references and tests
+
+Not changing: `A0/A1/A2` type params (standard tuple-impl pattern), `nz()` test helper, `AssetDsc.dsc` (matches domain key), arity suffixes (`alt2`, `permutation3`).
+
+**Verify:** `cargo test && cargo run -- example.log`
+
+---
+
+## Phase 15: Modularity (split `parse.rs`)
+
+- [ ] Create `src/parse/` directory
+- [ ] Move combinator framework (traits + structs) to `src/parse/combinators.rs`
+- [ ] Move domain types (AuthData, AssetDsc, Backet, etc.) to `src/parse/domain.rs`
+- [ ] Move log hierarchy (LogLine, LogKind, etc.) to `src/parse/log.rs`
+- [ ] Convert `src/parse.rs` to module root: `mod combinators; mod domain; mod log;` with `pub use` re-exports
+- [ ] Move `primitives` (ex-`stdp`) as private sub-module within `combinators.rs`
+- [ ] Refine visibility: constructor functions to `pub(crate)`
+- [ ] Move tests to `#[cfg(test)] mod tests` in each sub-module
+
+Uses edition 2024 module paths (NO `mod.rs`).
+
+**Depends on:** Phase 14
+
+**Verify:** `cargo test && cargo run -- example.log`
+
+---
+
+## Phase 16: Newtype pattern (`UserId`, `AssetId`)
+
+- [ ] Define `pub struct UserId(pub String)` with `Debug, Clone, PartialEq`
+- [ ] Define `pub struct AssetId(pub String)` with `Debug, Clone, PartialEq`
+- [ ] Implement `Parsable` for `UserId` (delegate to `Unquote` + `Map`)
+- [ ] Implement `Parsable` for `AssetId` (delegate to `Unquote` + `Map`)
+- [ ] Replace `user_id: String` → `user_id: UserId` in `UserCash`, `UserBacket`, `UserBackets`, `AppLogJournalKind::{CreateUser, DeleteUser, RegisterAsset, UnregisterAsset}`
+- [ ] Replace `asset_id: String` / `id: String` → `AssetId` in `AssetDsc`, `Backet`, `AppLogJournalKind::{RegisterAsset, UnregisterAsset}`
+- [ ] Update all parser implementations
+- [ ] Update all tests
+
+**Depends on:** Phase 15
+
+**Verify:** `cargo test && cargo run -- example.log`
+
+---
+
+## Phase 17: Error handling (`ParseError`, `anyhow`)
+
+- [ ] Define `ParseError` enum with variants: `UnexpectedInput`, `IncompleteInput`, `InvalidValue` (each with `&'static str` context)
+- [ ] Add `thiserror = "2"` to `[dependencies]` in `Cargo.toml`
+- [ ] Replace `Result<T, ()>` with `Result<T, ParseError>` in `Parser` trait and all implementations
+- [ ] Update all `Err(())` → appropriate `ParseError` variants
+- [ ] Update all `ok_or(())` and `map_err(|_| ())` calls
+- [ ] Add `anyhow = "1"` to `[dependencies]` in `Cargo.toml`
+- [ ] Fix `main.rs`: replace `args[1]` panic with `.get(1)` + usage message
+- [ ] Fix `main.rs`: replace `.unwrap()` on file open with error message
+- [ ] Remove hardcoded demo code from `main.rs` (lines 54-58)
+- [ ] Change `main()` to `fn main() -> anyhow::Result<()>`
+
+**Verify:** `cargo test && cargo run -- example.log`
+
+---
+
+## Phase 18: Strategy pattern (`LogFilter` trait)
+
+- [ ] Define `LogFilter` trait in `src/lib.rs`: `fn accepts(&self, log: &LogLine) -> bool`
+- [ ] Implement `LogFilter` for `ReadMode` (move existing match logic)
+- [ ] Update `read_log()` signature: `filter: impl LogFilter` instead of `mode: ReadMode`
+- [ ] Update call sites in `main.rs` and tests
+
+**Verify:** `cargo test && cargo run -- example.log`
+
+---
+
+## Phase 19: CLI argument parsing (`clap`)
+
+- [ ] Add `clap = { version = "4", features = ["derive"] }` to `[dependencies]` in `Cargo.toml`
+- [ ] Define CLI struct with `#[derive(clap::Parser)]`
+- [ ] Support `--mode all|errors|exchanges` (default: `all`)
+- [ ] Support `--request-id 1,2,3` (optional, comma-separated)
+- [ ] Positional `<filename>` argument
+- [ ] Free `--help` and `--version` support
+- [ ] Update `main()` to use clap-parsed args
+
+**Depends on:** Phase 18
+
+**Verify:** `cargo test && cargo run -- example.log && cargo run -- --help`
+
+---
+
+## Phase 20: `Display` trait for log types
+
+- [ ] Implement `Display` for `LogLine`
+- [ ] Implement `Display` for `LogKind`, `SystemLogKind`, `AppLogKind`
+- [ ] Implement `Display` for journal variants (`AppLogJournalKind`)
+- [ ] Implement `Display` for domain types (`UserId`, `AssetId`, `UserCash`, `Backet`, etc.)
+- [ ] Update `main.rs` to use `{}` instead of `{:?}` for output
+
+**Depends on:** Phase 15
+
+**Verify:** `cargo test && cargo run -- example.log` (output should be human-readable)
+
+---
+
+## Phase 21: Property-based testing (`proptest`)
+
+- [ ] Add `proptest = "1"` to `[dev-dependencies]` in `Cargo.toml`
+- [ ] Roundtrip test: `unquote_escaped(quote(s)) == Ok(("", s))` for arbitrary strings
+- [ ] No-panic test: `LogLine::parser().parse(arbitrary_string)` never panics
+- [ ] Suffix invariant: parser remaining output is always a suffix of input
+- [ ] Add missing unit tests: `WithdrawCash`, `DeleteUser`, `UnregisterAsset` standalone parsing
+- [ ] Add `Permutation` with 3 parsers coverage
+- [ ] Add error cases for each domain type with malformed input
+
+**Depends on:** Phase 20
+
+**Verify:** `cargo test && cargo test -- --nocapture`
+
+---
+
+## Phase 22: Parser fluent API (stretch)
+
+- [ ] Add `.map()` method to `Parser` trait as blanket extension
+- [ ] Add `.preceded_by()` method
+- [ ] Add `.strip_ws()` method
+- [ ] Rewrite `Parsable` implementations using fluent style where it improves readability
+- [ ] Example: `tag("Error").preceded_by(tag("System::")).map(|_| ...)`
+
+**Depends on:** Phase 15
 
 **Verify:** `cargo test && cargo run -- example.log`
