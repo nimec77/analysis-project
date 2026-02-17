@@ -11,7 +11,7 @@
 | :green_circle: | 5 | `u8` constants -> `enum ReadMode` | `src/lib.rs` | — |
 | :green_circle: | 6 | `match` instead of `if` chain | `src/lib.rs` | Phase 5 |
 | :green_circle: | 7 | `Result` instead of `panic!` | `src/lib.rs` | Phase 5 |
-| :white_circle: | 8 | Generic `just_parse<T>()` | `src/parse.rs` | — |
+| :green_circle: | 8 | Generic `just_parse<T>()` | `src/parse.rs` | — |
 | :white_circle: | 9 | Loops -> iterators | `src/lib.rs` | — |
 | :white_circle: | 10 | `Box` the large enum variant | `src/parse.rs` | — |
 | :white_circle: | 11 | `NonZeroU32` tight type | `src/parse.rs` | — |
@@ -19,7 +19,7 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 8
+**Current Phase:** 9
 
 ---
 
@@ -118,7 +118,7 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 8: Generic `just_parse<T>()`
 
-- [ ] Collapse `just_parse_u32`, `just_parse_u64`, etc. into one generic `just_parse<T: Parsable>()`
+- [x] Collapse `just_parse_u32`, `just_parse_u64`, etc. into one generic `just_parse<T: Parsable>()`
 
 **Hint:** `src/parse.rs:789` — `// подсказка: почему бы не заменить на один дженерик?`
 

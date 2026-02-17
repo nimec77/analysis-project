@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 9: Loops to Iterators
+
+**Scope:** `src/lib.rs`
+
+Replaced the two manual `for` loops in the `read_log()` function body with idiomatic Rust iterator chains. The outer `for` loop (manual `push` into a mutable `Vec`) was replaced with a two-pass iterator chain: `.collect::<Result<Vec<_>, _>>()?` to parse all lines with short-circuit error propagation, followed by `.into_iter().filter(|log| { ... }).collect()` for filtering by request ID and mode. The inner `for` loop (manual request ID search using a mutable boolean flag `request_id_found` and `break`) was replaced with `request_ids.contains(&log.request_id)`. Removed the hint comment `// подсказка: можно обойтись итераторами`. The `read_log()` function signature is unchanged; all existing 25 tests pass unchanged; no behavior changes.
+
 ## Phase 8: Generic `just_parse<T>()`
 
 **Scope:** `src/parse.rs`, `src/main.rs`
