@@ -4,7 +4,7 @@
 
 ## Tasks
 
-- [ ] 11.1 Use `std::num::NonZeroU32` for `request_id` instead of `u32` + runtime check
+- [x] 11.1 Use `std::num::NonZeroU32` for `request_id` instead of `u32` + runtime check
 
 ## Acceptance Criteria
 

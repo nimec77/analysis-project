@@ -21,6 +21,7 @@ struct LogIterator<R: Read> {
         std::io::Lines<std::io::BufReader<R>>,
         fn(&Result<String, std::io::Error>) -> bool,
     >,
+    parser: <LogLine as Parsable>::Parser,
 }
 impl<R: Read> LogIterator<R> {
     fn new(reader: R) -> Self {
@@ -35,6 +36,7 @@ impl<R: Read> LogIterator<R> {
                         .map(|line| line.trim().is_empty())
                         .unwrap_or(false)
                 }),
+            parser: LogLine::parser(),
         }
     }
 }
@@ -47,7 +49,7 @@ impl<R: Read> Iterator for LogIterator<R> {
                 Ok(line) => line,
                 Err(e) => return Some(Err(e)),
             };
-            let Ok((remaining, result)) = LOG_LINE_PARSER.parse(line.trim()) else {
+            let Ok((remaining, result)) = self.parser.parse(line.trim()) else {
                 continue;
             };
             if remaining.trim().is_empty() {

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 12: Remove `OnceLock` Singleton
+
+**Scope:** `src/parse.rs`, `src/lib.rs`
+
+Removed the `LogLineParser` struct and `LOG_LINE_PARSER` `OnceLock` singleton from `src/parse.rs`, eliminating the last piece of hidden global mutable state and the unnecessary `std::sync::OnceLock` synchronization primitive. The parser is now constructed once per `LogIterator` instance via `LogLine::parser()` and stored as a `parser: <LogLine as Parsable>::Parser` field, replacing the previous `LOG_LINE_PARSER.parse(line.trim())` call with `self.parser.parse(line.trim())` in `LogIterator::next()`. Removed the last two `// подсказка:` hint comments in the codebase (`// подсказка: singleton, без которого можно обойтись` and `// парсеры не страшно вытащить в pub`), completing all identified technical debt across the 12-phase refactoring project. No changes to `src/main.rs` or test code. No external dependencies added. All existing 25 tests pass unchanged; no behavior changes.
+
 ## Phase 11: `NonZeroU32` Tight Type
 
 **Scope:** `src/parse.rs`, `src/lib.rs`

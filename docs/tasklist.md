@@ -14,12 +14,12 @@
 | :green_circle: | 8 | Generic `just_parse<T>()` | `src/parse.rs` | — |
 | :green_circle: | 9 | Loops -> iterators | `src/lib.rs` | — |
 | :green_circle: | 10 | `Box` the large enum variant | `src/parse.rs` | — |
-| :white_circle: | 11 | `NonZeroU32` tight type | `src/parse.rs` | — |
-| :white_circle: | 12 | Remove `OnceLock` singleton | `src/parse.rs`, `src/lib.rs` | Phase 1 |
+| :green_circle: | 11 | `NonZeroU32` tight type | `src/parse.rs` | — |
+| :green_circle: | 12 | Remove `OnceLock` singleton | `src/parse.rs`, `src/lib.rs` | Phase 1 |
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 11
+**Current Phase:** 12
 
 ---
 
@@ -150,7 +150,7 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 11: `NonZeroU32` tight type
 
-- [ ] Use `std::num::NonZeroU32` for `request_id` instead of `u32` + runtime check
+- [x] Use `std::num::NonZeroU32` for `request_id` instead of `u32` + runtime check
 
 **Hint:** `src/parse.rs:39` — `// подсказка: вместо if можно использовать tight-тип std::num::NonZeroU32`
 
@@ -160,9 +160,9 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 12: Remove `OnceLock` singleton
 
-- [ ] Remove `LOG_LINE_PARSER` `OnceLock` singleton
-- [ ] Construct the parser inline or pass it as a parameter
-- [ ] Update call site in `lib.rs`
+- [x] Remove `LOG_LINE_PARSER` `OnceLock` singleton
+- [x] Construct the parser inline or pass it as a parameter
+- [x] Update call site in `lib.rs`
 
 **Hint:** `src/parse.rs:1144` — `// подсказка: singleton, без которого можно обойтись`
 
