@@ -11,9 +11,8 @@ pub struct AuthData(pub(crate) [u8; AUTHDATA_SIZE]);
 impl Parsable for AuthData {
     type Parser = Map<Take<primitives::Byte>, fn(Vec<u8>) -> Self>;
     fn parser() -> Self::Parser {
-        map(take(AUTHDATA_SIZE, primitives::Byte), |authdata| {
-            AuthData(authdata.try_into().unwrap_or([0; AUTHDATA_SIZE]))
-        })
+        take(AUTHDATA_SIZE, primitives::Byte)
+            .map(|authdata| AuthData(authdata.try_into().unwrap_or([0; AUTHDATA_SIZE])))
     }
 }
 impl fmt::Display for AuthData {
@@ -31,7 +30,7 @@ pub struct UserId(pub String);
 impl Parsable for UserId {
     type Parser = Map<Unquote, fn(String) -> Self>;
     fn parser() -> Self::Parser {
-        map(unquote(), |s| UserId(s))
+        unquote().map(UserId)
     }
 }
 impl fmt::Display for UserId {
@@ -46,7 +45,7 @@ pub struct AssetId(pub String);
 impl Parsable for AssetId {
     type Parser = Map<Unquote, fn(String) -> Self>;
     fn parser() -> Self::Parser {
-        map(unquote(), |s| AssetId(s))
+        unquote().map(AssetId)
     }
 }
 impl fmt::Display for AssetId {
@@ -73,17 +72,12 @@ impl Parsable for AssetDsc {
     >;
     fn parser() -> Self::Parser {
         // комбинаторы парсеров - это круто
-        map(
-            delimited(
-                tuple2(
-                    strip_whitespace(tag("AssetDsc")),
-                    strip_whitespace(tag("{")),
-                ),
-                permutation2(key_value("id", AssetId::parser()), key_value("dsc", unquote())),
-                strip_whitespace(tag("}")),
-            ),
-            |(id, dsc)| AssetDsc { id, dsc },
+        delimited(
+            tuple2(tag("AssetDsc").strip_ws(), tag("{").strip_ws()),
+            permutation2(key_value("id", AssetId::parser()), key_value("dsc", unquote())),
+            tag("}").strip_ws(),
         )
+        .map(|(id, dsc)| AssetDsc { id, dsc })
     }
 }
 impl fmt::Display for AssetDsc {
@@ -107,17 +101,15 @@ impl Parsable for Backet {
         fn((AssetId, std::num::NonZeroU32)) -> Self,
     >;
     fn parser() -> Self::Parser {
-        map(
-            delimited(
-                tuple2(strip_whitespace(tag("Backet")), strip_whitespace(tag("{"))),
-                permutation2(
-                    key_value("asset_id", AssetId::parser()),
-                    key_value("count", primitives::U32),
-                ),
-                strip_whitespace(tag("}")),
+        delimited(
+            tuple2(tag("Backet").strip_ws(), tag("{").strip_ws()),
+            permutation2(
+                key_value("asset_id", AssetId::parser()),
+                key_value("count", primitives::U32),
             ),
-            |(asset_id, count)| Backet { asset_id, count },
+            tag("}").strip_ws(),
         )
+        .map(|(asset_id, count)| Backet { asset_id, count })
     }
 }
 impl fmt::Display for Backet {
@@ -141,20 +133,15 @@ impl Parsable for UserCash {
         fn((UserId, std::num::NonZeroU32)) -> Self,
     >;
     fn parser() -> Self::Parser {
-        map(
-            delimited(
-                tuple2(
-                    strip_whitespace(tag("UserCash")),
-                    strip_whitespace(tag("{")),
-                ),
-                permutation2(
-                    key_value("user_id", UserId::parser()),
-                    key_value("count", primitives::U32),
-                ),
-                strip_whitespace(tag("}")),
+        delimited(
+            tuple2(tag("UserCash").strip_ws(), tag("{").strip_ws()),
+            permutation2(
+                key_value("user_id", UserId::parser()),
+                key_value("count", primitives::U32),
             ),
-            |(user_id, count)| UserCash { user_id, count },
+            tag("}").strip_ws(),
         )
+        .map(|(user_id, count)| UserCash { user_id, count })
     }
 }
 impl fmt::Display for UserCash {
@@ -178,20 +165,15 @@ impl Parsable for UserBacket {
         fn((UserId, Backet)) -> Self,
     >;
     fn parser() -> Self::Parser {
-        map(
-            delimited(
-                tuple2(
-                    strip_whitespace(tag("UserBacket")),
-                    strip_whitespace(tag("{")),
-                ),
-                permutation2(
-                    key_value("user_id", UserId::parser()),
-                    key_value("backet", Backet::parser()),
-                ),
-                strip_whitespace(tag("}")),
+        delimited(
+            tuple2(tag("UserBacket").strip_ws(), tag("{").strip_ws()),
+            permutation2(
+                key_value("user_id", UserId::parser()),
+                key_value("backet", Backet::parser()),
             ),
-            |(user_id, backet)| UserBacket { user_id, backet },
+            tag("}").strip_ws(),
         )
+        .map(|(user_id, backet)| UserBacket { user_id, backet })
     }
 }
 impl fmt::Display for UserBacket {
@@ -218,20 +200,15 @@ impl Parsable for UserBackets {
         fn((UserId, Vec<Backet>)) -> Self,
     >;
     fn parser() -> Self::Parser {
-        map(
-            delimited(
-                tuple2(
-                    strip_whitespace(tag("UserBackets")),
-                    strip_whitespace(tag("{")),
-                ),
-                permutation2(
-                    key_value("user_id", UserId::parser()),
-                    key_value("backets", list(Backet::parser())),
-                ),
-                strip_whitespace(tag("}")),
+        delimited(
+            tuple2(tag("UserBackets").strip_ws(), tag("{").strip_ws()),
+            permutation2(
+                key_value("user_id", UserId::parser()),
+                key_value("backets", list(Backet::parser())),
             ),
-            |(user_id, backets)| UserBackets { user_id, backets },
+            tag("}").strip_ws(),
         )
+        .map(|(user_id, backets)| UserBackets { user_id, backets })
     }
 }
 impl fmt::Display for UserBackets {
@@ -252,10 +229,7 @@ pub struct Announcements(Vec<UserBackets>);
 impl Parsable for Announcements {
     type Parser = Map<List<<UserBackets as Parsable>::Parser>, fn(Vec<UserBackets>) -> Self>;
     fn parser() -> Self::Parser {
-        fn from_vec(vec: Vec<UserBackets>) -> Announcements {
-            Announcements(vec)
-        }
-        map(list(UserBackets::parser()), from_vec)
+        list(UserBackets::parser()).map(Announcements)
     }
 }
 impl fmt::Display for Announcements {

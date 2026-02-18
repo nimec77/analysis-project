@@ -31,12 +31,12 @@
 | :green_circle: | 18 | Strategy pattern (`LogFilter` trait) | `src/lib.rs` | — |
 | :green_circle: | 19 | CLI argument parsing (`clap`) | `src/main.rs`, `Cargo.toml` | Phase 18 |
 | :green_circle: | 20 | `Display` trait for log types | `src/parse/*.rs` | Phase 15 |
-| :white_circle: | 21 | Property-based testing (`proptest`) | `src/parse/*.rs`, `Cargo.toml` | Phase 20 |
+| :green_circle: | 21 | Property-based testing (`proptest`) | `src/parse/*.rs`, `Cargo.toml` | Phase 20 |
 | :white_circle: | 22 | Parser fluent API (stretch) | `src/parse/combinators.rs` | Phase 15 |
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 21
+**Current Phase:** 22
 
 ---
 
@@ -314,13 +314,13 @@ Uses edition 2024 module paths (NO `mod.rs`).
 
 ## Phase 21: Property-based testing (`proptest`)
 
-- [ ] Add `proptest = "1"` to `[dev-dependencies]` in `Cargo.toml`
-- [ ] Roundtrip test: `unquote_escaped(quote(s)) == Ok(("", s))` for arbitrary strings
-- [ ] No-panic test: `LogLine::parser().parse(arbitrary_string)` never panics
-- [ ] Suffix invariant: parser remaining output is always a suffix of input
-- [ ] Add missing unit tests: `WithdrawCash`, `DeleteUser`, `UnregisterAsset` standalone parsing
-- [ ] Add `Permutation` with 3 parsers coverage
-- [ ] Add error cases for each domain type with malformed input
+- [x] Add `proptest = "1"` to `[dev-dependencies]` in `Cargo.toml`
+- [x] Roundtrip test: `unquote_escaped(quote(s)) == Ok(("", s))` for arbitrary strings
+- [x] No-panic test: `LogLine::parser().parse(arbitrary_string)` never panics
+- [x] Suffix invariant: parser remaining output is always a suffix of input
+- [x] Add missing unit tests: `WithdrawCash`, `DeleteUser`, `UnregisterAsset` standalone parsing
+- [x] Add `Permutation` with 3 parsers coverage
+- [x] Add error cases for each domain type with malformed input
 
 **Depends on:** Phase 20
 

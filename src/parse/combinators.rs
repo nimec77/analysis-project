@@ -17,6 +17,44 @@ pub enum ParseError {
 pub trait Parser {
     type Dest;
     fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError>;
+
+    /// Fluent combinator: transform the parsed value with a mapping function.
+    ///
+    /// Equivalent to `Map::new(self, f)`, but chainable:
+    /// `tag("foo").map(|_| 42)`
+    fn map<Dest, F: Fn(Self::Dest) -> Dest>(self, f: F) -> Map<Self, F>
+    where
+        Self: Sized,
+    {
+        Map { parser: self, map: f }
+    }
+
+    /// Fluent combinator: require a prefix parser to succeed first, discarding its result.
+    ///
+    /// `self` is the main parser whose result is kept. Equivalent to
+    /// `Preceded { prefix_to_ignore: prefix, dest_parser: self }`.
+    ///
+    /// Example: `tag("Error").preceded_by(tag("System::"))` parses `"System::Error"`,
+    /// discards the `"System::"` match, and returns `()` from the `"Error"` tag.
+    fn preceded_by<P: Parser>(self, prefix: P) -> Preceded<P, Self>
+    where
+        Self: Sized,
+    {
+        Preceded {
+            prefix_to_ignore: prefix,
+            dest_parser: self,
+        }
+    }
+
+    /// Fluent combinator: strip leading whitespace before and after parsing.
+    ///
+    /// Equivalent to `StripWhitespace { parser: self }`.
+    fn strip_ws(self) -> StripWhitespace<Self>
+    where
+        Self: Sized,
+    {
+        StripWhitespace { parser: self }
+    }
 }
 /// Вспомогательный трейт, чтобы писать собственный десериализатор
 /// (по решаемой задаче - отдалённый аналог `serde::Deserialize`)
@@ -903,6 +941,32 @@ mod tests {
         );
         // Only two of three fields provided
         assert!(parser.parse(r#""a":1,"b":2,"#).is_err());
+    }
+
+    #[test]
+    fn test_fluent_api_chaining() {
+        // Demonstrates the chaining pattern from phase 22.5:
+        // tag("Error").preceded_by(tag("System::")).map(|_| ...)
+        let parser = tag("Error")
+            .preceded_by(tag("System::"))
+            .map(|_| "matched_system_error");
+        assert_eq!(
+            parser.parse("System::Error rest"),
+            Ok((" rest", "matched_system_error"))
+        );
+        assert!(parser.parse("App::Error rest").is_err());
+        assert!(parser.parse("System::Trace rest").is_err());
+
+        // Chaining .strip_ws() with .preceded_by() and .map()
+        let parser = unquote()
+            .strip_ws()
+            .preceded_by(tag("NetworkError").strip_ws())
+            .preceded_by(tag("Error"))
+            .map(|msg: String| format!("net: {msg}"));
+        assert_eq!(
+            parser.parse(r#"Error NetworkError "url unknown""#),
+            Ok(("", "net: url unknown".to_string()))
+        );
     }
 
     proptest! {
