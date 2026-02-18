@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 23: Combinator Macros
+
+**Scope:** `src/parse/combinators.rs`, `src/parse/log.rs`
+
+Replaced ~256 lines of repetitive hand-written combinator arity implementations with ~71 lines of macro-generated code (net -185 lines). Introduced three macros:
+
+- **`impl_tuple!`** — generates `impl Parser for Tuple<(A0, ..., An)>` for arbitrary arities. Uses an `@impl`-only pattern for arities 3-4 (trait impl without constructor function, avoiding dead_code warnings). Arity 2 retains its `tuple2()` constructor.
+- **`impl_alt!`** — generates `impl Parser for Alt<(A0, ..., An)>` for arbitrary arities. Provides constructors for `alt2`..`alt4` and `alt8`; arities 5-7 use `@impl`-only (trait impl without constructor). Replaces 5 hand-written `Alt` impls and 4 constructor functions.
+- **`permutation_fn!`** — generates `permutation2` and `permutation3` constructor functions (hand-written `impl Parser` retained due to N!-branch matching complexity). Replaces 2 hand-written constructors.
+
+Removed dead `map()` and `preceded()` standalone constructor functions, superseded by the fluent API (`.map()`, `.preceded_by()`) added in Phase 22. Moved the `I32` parser and `quote()` helper behind `#[cfg(test)]` since they are only used in tests. All 42 tests pass; no test cases deleted. No behavior changes.
+
+---
+
 ## Phase 22: Parser Fluent API
 
 **Scope:** `src/parse/combinators.rs`, `src/parse/domain.rs`, `src/parse/log.rs`

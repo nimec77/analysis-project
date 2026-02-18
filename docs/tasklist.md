@@ -33,10 +33,11 @@
 | :green_circle: | 20 | `Display` trait for log types | `src/parse/*.rs` | Phase 15 |
 | :green_circle: | 21 | Property-based testing (`proptest`) | `src/parse/*.rs`, `Cargo.toml` | Phase 20 |
 | :green_circle: | 22 | Parser fluent API (stretch) | `src/parse/combinators.rs` | Phase 15 |
+| :green_circle: | 23 | Combinator macros | `src/parse/combinators.rs`, `src/parse/log.rs` | Phase 22 |
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 22
+**Current Phase:** 23
 
 ---
 
@@ -339,3 +340,17 @@ Uses edition 2024 module paths (NO `mod.rs`).
 **Depends on:** Phase 15
 
 **Verify:** `cargo test && cargo run -- example.log`
+
+---
+
+## Phase 23: Combinator macros
+
+- [x] Create `impl_tuple!` macro with `@impl`-only pattern for arities 3-4
+- [x] Create `impl_alt!` macro with `@impl`-only pattern for arities 5-7; constructors for 2-4, 8
+- [x] Create `permutation_fn!` macro for `permutation2`, `permutation3` constructors
+- [x] Remove dead `map()` and `preceded()` standalone constructors (superseded by fluent API)
+- [x] Move `I32` parser and `quote()` behind `#[cfg(test)]`
+
+**Depends on:** Phase 22
+
+**Verify:** `cargo test && cargo clippy --tests`

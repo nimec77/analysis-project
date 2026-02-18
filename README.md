@@ -144,3 +144,4 @@ analysis-project/
 | 20 | `Display` for log types | Round-trippable `Display` impls for all types |
 | 21 | Property-based testing | `proptest` roundtrip, no-panic, and suffix invariant tests |
 | 22 | Parser fluent API | `.map()`, `.preceded_by()`, `.strip_ws()` chainable methods |
+| 23 | Combinator macros | `impl_tuple!`, `impl_alt!`, `permutation_fn!` macros replacing hand-written arity impls |
