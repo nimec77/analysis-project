@@ -32,7 +32,7 @@
 | :green_circle: | 19 | CLI argument parsing (`clap`) | `src/main.rs`, `Cargo.toml` | Phase 18 |
 | :green_circle: | 20 | `Display` trait for log types | `src/parse/*.rs` | Phase 15 |
 | :green_circle: | 21 | Property-based testing (`proptest`) | `src/parse/*.rs`, `Cargo.toml` | Phase 20 |
-| :white_circle: | 22 | Parser fluent API (stretch) | `src/parse/combinators.rs` | Phase 15 |
+| :green_circle: | 22 | Parser fluent API (stretch) | `src/parse/combinators.rs` | Phase 15 |
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
@@ -330,11 +330,11 @@ Uses edition 2024 module paths (NO `mod.rs`).
 
 ## Phase 22: Parser fluent API (stretch)
 
-- [ ] Add `.map()` method to `Parser` trait as blanket extension
-- [ ] Add `.preceded_by()` method
-- [ ] Add `.strip_ws()` method
-- [ ] Rewrite `Parsable` implementations using fluent style where it improves readability
-- [ ] Example: `tag("Error").preceded_by(tag("System::")).map(|_| ...)`
+- [x] Add `.map()` method to `Parser` trait as blanket extension
+- [x] Add `.preceded_by()` method
+- [x] Add `.strip_ws()` method
+- [x] Rewrite `Parsable` implementations using fluent style where it improves readability
+- [x] Example: `tag("Error").preceded_by(tag("System::")).map(|_| ...)`
 
 **Depends on:** Phase 15
 
