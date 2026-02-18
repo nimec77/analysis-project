@@ -29,14 +29,14 @@
 | :green_circle: | 16 | Newtype pattern (`UserId`, `AssetId`) | `src/parse/*.rs` | Phase 15 |
 | :green_circle: | 17 | Error handling (`ParseError`, `anyhow`) | `src/parse/*.rs`, `src/lib.rs`, `src/main.rs`, `Cargo.toml` | — |
 | :green_circle: | 18 | Strategy pattern (`LogFilter` trait) | `src/lib.rs` | — |
-| :white_circle: | 19 | CLI argument parsing (`clap`) | `src/main.rs`, `Cargo.toml` | Phase 18 |
+| :green_circle: | 19 | CLI argument parsing (`clap`) | `src/main.rs`, `Cargo.toml` | Phase 18 |
 | :white_circle: | 20 | `Display` trait for log types | `src/parse/*.rs` | Phase 15 |
 | :white_circle: | 21 | Property-based testing (`proptest`) | `src/parse/*.rs`, `Cargo.toml` | Phase 20 |
 | :white_circle: | 22 | Parser fluent API (stretch) | `src/parse/combinators.rs` | Phase 15 |
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 19
+**Current Phase:** 20
 
 ---
 
@@ -284,13 +284,13 @@ Uses edition 2024 module paths (NO `mod.rs`).
 
 ## Phase 19: CLI argument parsing (`clap`)
 
-- [ ] Add `clap = { version = "4", features = ["derive"] }` to `[dependencies]` in `Cargo.toml`
-- [ ] Define CLI struct with `#[derive(clap::Parser)]`
-- [ ] Support `--mode all|errors|exchanges` (default: `all`)
-- [ ] Support `--request-id 1,2,3` (optional, comma-separated)
-- [ ] Positional `<filename>` argument
-- [ ] Free `--help` and `--version` support
-- [ ] Update `main()` to use clap-parsed args
+- [x] Add `clap = { version = "4", features = ["derive"] }` to `[dependencies]` in `Cargo.toml`
+- [x] Define CLI struct with `#[derive(clap::Parser)]`
+- [x] Support `--mode all|errors|exchanges` (default: `all`)
+- [x] Support `--request-id 1,2,3` (optional, comma-separated)
+- [x] Positional `<filename>` argument
+- [x] Free `--help` and `--version` support
+- [x] Update `main()` to use clap-parsed args
 
 **Depends on:** Phase 18
 

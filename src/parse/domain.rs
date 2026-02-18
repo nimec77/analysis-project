@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::combinators::primitives;
 use super::combinators::*;
 
@@ -14,6 +16,14 @@ impl Parsable for AuthData {
         })
     }
 }
+impl fmt::Display for AuthData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for byte in &self.0[..16] {
+            write!(f, "{byte:02x}")?;
+        }
+        write!(f, "...({} bytes)", AUTHDATA_SIZE)
+    }
+}
 
 /// Newtype wrapper around String for type-safe user identification.
 #[derive(Debug, Clone, PartialEq)]
@@ -24,6 +34,11 @@ impl Parsable for UserId {
         map(unquote(), |s| UserId(s))
     }
 }
+impl fmt::Display for UserId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 /// Newtype wrapper around String for type-safe asset identification.
 #[derive(Debug, Clone, PartialEq)]
@@ -32,6 +47,11 @@ impl Parsable for AssetId {
     type Parser = Map<Unquote, fn(String) -> Self>;
     fn parser() -> Self::Parser {
         map(unquote(), |s| AssetId(s))
+    }
+}
+impl fmt::Display for AssetId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -66,6 +86,11 @@ impl Parsable for AssetDsc {
         )
     }
 }
+impl fmt::Display for AssetDsc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ({})", self.id, self.dsc)
+    }
+}
 /// Сведение о предмете в некотором количестве
 #[derive(Debug, Clone, PartialEq)]
 pub struct Backet {
@@ -93,6 +118,11 @@ impl Parsable for Backet {
             ),
             |(asset_id, count)| Backet { asset_id, count },
         )
+    }
+}
+impl fmt::Display for Backet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}x{}", self.count, self.asset_id)
     }
 }
 /// Фиатные деньги конкретного пользователя
@@ -127,6 +157,11 @@ impl Parsable for UserCash {
         )
     }
 }
+impl fmt::Display for UserCash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "user={}, amount={}", self.user_id, self.count)
+    }
+}
 /// [Backet] конкретного пользователя
 #[derive(Debug, Clone, PartialEq)]
 pub struct UserBacket {
@@ -157,6 +192,11 @@ impl Parsable for UserBacket {
             ),
             |(user_id, backet)| UserBacket { user_id, backet },
         )
+    }
+}
+impl fmt::Display for UserBacket {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "user={}, backet={}", self.user_id, self.backet)
     }
 }
 /// [Бакеты](Backet) конкретного пользователя
@@ -194,6 +234,18 @@ impl Parsable for UserBackets {
         )
     }
 }
+impl fmt::Display for UserBackets {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "user={}, backets=[", self.user_id)?;
+        for (i, backet) in self.backets.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{backet}")?;
+        }
+        write!(f, "]")
+    }
+}
 /// Список опубликованных бакетов
 #[derive(Debug, Clone, PartialEq)]
 pub struct Announcements(Vec<UserBackets>);
@@ -204,6 +256,18 @@ impl Parsable for Announcements {
             Announcements(vec)
         }
         map(list(UserBackets::parser()), from_vec)
+    }
+}
+impl fmt::Display for Announcements {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[")?;
+        for (i, ub) in self.0.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{ub}")?;
+        }
+        write!(f, "]")
     }
 }
 
