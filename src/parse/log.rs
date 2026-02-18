@@ -51,20 +51,20 @@ pub enum AppLogTraceKind {
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppLogJournalKind {
     CreateUser {
-        user_id: String,
+        user_id: UserId,
         authorized_capital: std::num::NonZeroU32,
     },
     DeleteUser {
-        user_id: String,
+        user_id: UserId,
     },
     RegisterAsset {
-        asset_id: String,
-        user_id: String,
+        asset_id: AssetId,
+        user_id: UserId,
         liquidity: std::num::NonZeroU32,
     },
     UnregisterAsset {
-        asset_id: String,
-        user_id: String,
+        asset_id: AssetId,
+        user_id: UserId,
     },
     DepositCash(UserCash),
     WithdrawCash(UserCash),
@@ -276,15 +276,15 @@ impl Parsable for AppLogJournalKind {
                     StripWhitespace<Tag>,
                     Delimited<
                         Tag,
-                        Permutation<(KeyValue<Unquote>, KeyValue<primitives::U32>)>,
+                        Permutation<(KeyValue<<UserId as Parsable>::Parser>, KeyValue<primitives::U32>)>,
                         Tag,
                     >,
                 >,
-                fn((String, std::num::NonZeroU32)) -> AppLogJournalKind,
+                fn((UserId, std::num::NonZeroU32)) -> AppLogJournalKind,
             >,
             Map<
-                Preceded<StripWhitespace<Tag>, Delimited<Tag, KeyValue<Unquote>, Tag>>,
-                fn(String) -> AppLogJournalKind,
+                Preceded<StripWhitespace<Tag>, Delimited<Tag, KeyValue<<UserId as Parsable>::Parser>, Tag>>,
+                fn(UserId) -> AppLogJournalKind,
             >,
             Map<
                 Preceded<
@@ -292,21 +292,21 @@ impl Parsable for AppLogJournalKind {
                     Delimited<
                         Tag,
                         Permutation<(
-                            KeyValue<Unquote>,
-                            KeyValue<Unquote>,
+                            KeyValue<<AssetId as Parsable>::Parser>,
+                            KeyValue<<UserId as Parsable>::Parser>,
                             KeyValue<primitives::U32>,
                         )>,
                         Tag,
                     >,
                 >,
-                fn((String, String, std::num::NonZeroU32)) -> AppLogJournalKind,
+                fn((AssetId, UserId, std::num::NonZeroU32)) -> AppLogJournalKind,
             >,
             Map<
                 Preceded<
                     StripWhitespace<Tag>,
-                    Delimited<Tag, Permutation<(KeyValue<Unquote>, KeyValue<Unquote>)>, Tag>,
+                    Delimited<Tag, Permutation<(KeyValue<<AssetId as Parsable>::Parser>, KeyValue<<UserId as Parsable>::Parser>)>, Tag>,
                 >,
-                fn((String, String)) -> AppLogJournalKind,
+                fn((AssetId, UserId)) -> AppLogJournalKind,
             >,
             Map<
                 Preceded<StripWhitespace<Tag>, <UserCash as Parsable>::Parser>,
@@ -336,7 +336,7 @@ impl Parsable for AppLogJournalKind {
                         delimited(
                             tag("{"),
                             permutation2(
-                                key_value("user_id", unquote()),
+                                key_value("user_id", UserId::parser()),
                                 key_value("authorized_capital", primitives::U32),
                             ),
                             tag("}"),
@@ -350,7 +350,7 @@ impl Parsable for AppLogJournalKind {
                 map(
                     preceded(
                         strip_whitespace(tag("DeleteUser")),
-                        delimited(tag("{"), key_value("user_id", unquote()), tag("}")),
+                        delimited(tag("{"), key_value("user_id", UserId::parser()), tag("}")),
                     ),
                     |user_id| AppLogJournalKind::DeleteUser { user_id },
                 ),
@@ -360,8 +360,8 @@ impl Parsable for AppLogJournalKind {
                         delimited(
                             tag("{"),
                             permutation3(
-                                key_value("asset_id", unquote()),
-                                key_value("user_id", unquote()),
+                                key_value("asset_id", AssetId::parser()),
+                                key_value("user_id", UserId::parser()),
                                 key_value("liquidity", primitives::U32),
                             ),
                             tag("}"),
@@ -379,8 +379,8 @@ impl Parsable for AppLogJournalKind {
                         delimited(
                             tag("{"),
                             permutation2(
-                                key_value("asset_id", unquote()),
-                                key_value("user_id", unquote()),
+                                key_value("asset_id", AssetId::parser()),
+                                key_value("user_id", UserId::parser()),
                             ),
                             tag("}"),
                         ),
@@ -507,7 +507,7 @@ mod tests {
             Ok((
                 "",
                 LogKind::App(AppLogKind::Journal(AppLogJournalKind::CreateUser {
-                    user_id: "Steeve".into(),
+                    user_id: UserId("Steeve".into()),
                     authorized_capital: nz(10_000)
                 }))
             ))
@@ -517,11 +517,11 @@ mod tests {
             Ok((
                 "",
                 LogKind::App(AppLogKind::Journal(AppLogJournalKind::DeleteUser {
-                    user_id: "Steeve".into()
+                    user_id: UserId("Steeve".into())
                 }))
             ))
         );
-        assert_eq!(LogKind::parser().parse(r#"App::Journal RegisterAsset {"asset_id": "bayc", "liquidity": 100000000, "user_id": "Steeve",}"#), Ok(("", LogKind::App(AppLogKind::Journal(AppLogJournalKind::RegisterAsset{asset_id: "bayc".into(), user_id: "Steeve".into(), liquidity: nz(100_000_000)})))));
+        assert_eq!(LogKind::parser().parse(r#"App::Journal RegisterAsset {"asset_id": "bayc", "liquidity": 100000000, "user_id": "Steeve",}"#), Ok(("", LogKind::App(AppLogKind::Journal(AppLogJournalKind::RegisterAsset{asset_id: AssetId("bayc".into()), user_id: UserId("Steeve".into()), liquidity: nz(100_000_000)})))));
         assert_eq!(
             LogKind::parser()
                 .parse(r#"App::Journal DepositCash UserCash{"user_id": "Steeve", "count": 10,}"#),
@@ -529,13 +529,13 @@ mod tests {
                 "",
                 LogKind::App(AppLogKind::Journal(AppLogJournalKind::DepositCash(
                     UserCash {
-                        user_id: "Steeve".into(),
+                        user_id: UserId("Steeve".into()),
                         count: nz(10)
                     }
                 )))
             ))
         );
-        assert_eq!(LogKind::parser().parse(r#"App::Journal BuyAsset UserBacket{"user_id": "Steeve", "backet": Backet{"asset_id":"bayc","count":1,},}"#), Ok(("", LogKind::App(AppLogKind::Journal(AppLogJournalKind::BuyAsset(UserBacket{user_id: "Steeve".into(), backet: Backet{asset_id: "bayc".into(),count:nz(1)}}))))));
+        assert_eq!(LogKind::parser().parse(r#"App::Journal BuyAsset UserBacket{"user_id": "Steeve", "backet": Backet{"asset_id":"bayc","count":1,},}"#), Ok(("", LogKind::App(AppLogKind::Journal(AppLogJournalKind::BuyAsset(UserBacket{user_id: UserId("Steeve".into()), backet: Backet{asset_id: AssetId("bayc".into()),count:nz(1)}}))))));
     }
 
     #[test]
@@ -547,7 +547,7 @@ mod tests {
                 "",
                 LogKind::App(AppLogKind::Journal(AppLogJournalKind::WithdrawCash(
                     UserCash {
-                        user_id: "Alice".into(),
+                        user_id: UserId("Alice".into()),
                         count: nz(500)
                     }
                 )))

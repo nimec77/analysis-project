@@ -15,21 +15,41 @@ impl Parsable for AuthData {
     }
 }
 
+/// Newtype wrapper around String for type-safe user identification.
+#[derive(Debug, Clone, PartialEq)]
+pub struct UserId(pub String);
+impl Parsable for UserId {
+    type Parser = Map<Unquote, fn(String) -> Self>;
+    fn parser() -> Self::Parser {
+        map(unquote(), |s| UserId(s))
+    }
+}
+
+/// Newtype wrapper around String for type-safe asset identification.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AssetId(pub String);
+impl Parsable for AssetId {
+    type Parser = Map<Unquote, fn(String) -> Self>;
+    fn parser() -> Self::Parser {
+        map(unquote(), |s| AssetId(s))
+    }
+}
+
 /// Пара 'сокращённое название предмета' - 'его описание'
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssetDsc {
     // `dsc` aka `description`
-    pub id: String,
+    pub id: AssetId,
     pub dsc: String,
 }
 impl Parsable for AssetDsc {
     type Parser = Map<
         Delimited<
             Tuple<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
-            Permutation<(KeyValue<Unquote>, KeyValue<Unquote>)>,
+            Permutation<(KeyValue<<AssetId as Parsable>::Parser>, KeyValue<Unquote>)>,
             StripWhitespace<Tag>,
         >,
-        fn((String, String)) -> Self,
+        fn((AssetId, String)) -> Self,
     >;
     fn parser() -> Self::Parser {
         // комбинаторы парсеров - это круто
@@ -39,7 +59,7 @@ impl Parsable for AssetDsc {
                     strip_whitespace(tag("AssetDsc")),
                     strip_whitespace(tag("{")),
                 ),
-                permutation2(key_value("id", unquote()), key_value("dsc", unquote())),
+                permutation2(key_value("id", AssetId::parser()), key_value("dsc", unquote())),
                 strip_whitespace(tag("}")),
             ),
             |(id, dsc)| AssetDsc { id, dsc },
@@ -49,24 +69,24 @@ impl Parsable for AssetDsc {
 /// Сведение о предмете в некотором количестве
 #[derive(Debug, Clone, PartialEq)]
 pub struct Backet {
-    pub asset_id: String,
+    pub asset_id: AssetId,
     pub count: std::num::NonZeroU32,
 }
 impl Parsable for Backet {
     type Parser = Map<
         Delimited<
             Tuple<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
-            Permutation<(KeyValue<Unquote>, KeyValue<primitives::U32>)>,
+            Permutation<(KeyValue<<AssetId as Parsable>::Parser>, KeyValue<primitives::U32>)>,
             StripWhitespace<Tag>,
         >,
-        fn((String, std::num::NonZeroU32)) -> Self,
+        fn((AssetId, std::num::NonZeroU32)) -> Self,
     >;
     fn parser() -> Self::Parser {
         map(
             delimited(
                 tuple2(strip_whitespace(tag("Backet")), strip_whitespace(tag("{"))),
                 permutation2(
-                    key_value("asset_id", unquote()),
+                    key_value("asset_id", AssetId::parser()),
                     key_value("count", primitives::U32),
                 ),
                 strip_whitespace(tag("}")),
@@ -78,17 +98,17 @@ impl Parsable for Backet {
 /// Фиатные деньги конкретного пользователя
 #[derive(Debug, Clone, PartialEq)]
 pub struct UserCash {
-    pub user_id: String,
+    pub user_id: UserId,
     pub count: std::num::NonZeroU32,
 }
 impl Parsable for UserCash {
     type Parser = Map<
         Delimited<
             Tuple<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
-            Permutation<(KeyValue<Unquote>, KeyValue<primitives::U32>)>,
+            Permutation<(KeyValue<<UserId as Parsable>::Parser>, KeyValue<primitives::U32>)>,
             StripWhitespace<Tag>,
         >,
-        fn((String, std::num::NonZeroU32)) -> Self,
+        fn((UserId, std::num::NonZeroU32)) -> Self,
     >;
     fn parser() -> Self::Parser {
         map(
@@ -98,7 +118,7 @@ impl Parsable for UserCash {
                     strip_whitespace(tag("{")),
                 ),
                 permutation2(
-                    key_value("user_id", unquote()),
+                    key_value("user_id", UserId::parser()),
                     key_value("count", primitives::U32),
                 ),
                 strip_whitespace(tag("}")),
@@ -110,17 +130,17 @@ impl Parsable for UserCash {
 /// [Backet] конкретного пользователя
 #[derive(Debug, Clone, PartialEq)]
 pub struct UserBacket {
-    pub user_id: String,
+    pub user_id: UserId,
     pub backet: Backet,
 }
 impl Parsable for UserBacket {
     type Parser = Map<
         Delimited<
             Tuple<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
-            Permutation<(KeyValue<Unquote>, KeyValue<<Backet as Parsable>::Parser>)>,
+            Permutation<(KeyValue<<UserId as Parsable>::Parser>, KeyValue<<Backet as Parsable>::Parser>)>,
             StripWhitespace<Tag>,
         >,
-        fn((String, Backet)) -> Self,
+        fn((UserId, Backet)) -> Self,
     >;
     fn parser() -> Self::Parser {
         map(
@@ -130,7 +150,7 @@ impl Parsable for UserBacket {
                     strip_whitespace(tag("{")),
                 ),
                 permutation2(
-                    key_value("user_id", unquote()),
+                    key_value("user_id", UserId::parser()),
                     key_value("backet", Backet::parser()),
                 ),
                 strip_whitespace(tag("}")),
@@ -142,7 +162,7 @@ impl Parsable for UserBacket {
 /// [Бакеты](Backet) конкретного пользователя
 #[derive(Debug, Clone, PartialEq)]
 pub struct UserBackets {
-    pub user_id: String,
+    pub user_id: UserId,
     pub backets: Vec<Backet>,
 }
 impl Parsable for UserBackets {
@@ -150,12 +170,12 @@ impl Parsable for UserBackets {
         Delimited<
             Tuple<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
             Permutation<(
-                KeyValue<Unquote>,
+                KeyValue<<UserId as Parsable>::Parser>,
                 KeyValue<List<<Backet as Parsable>::Parser>>,
             )>,
             StripWhitespace<Tag>,
         >,
-        fn((String, Vec<Backet>)) -> Self,
+        fn((UserId, Vec<Backet>)) -> Self,
     >;
     fn parser() -> Self::Parser {
         map(
@@ -165,7 +185,7 @@ impl Parsable for UserBackets {
                     strip_whitespace(tag("{")),
                 ),
                 permutation2(
-                    key_value("user_id", unquote()),
+                    key_value("user_id", UserId::parser()),
                     key_value("backets", list(Backet::parser())),
                 ),
                 strip_whitespace(tag("}")),
@@ -225,7 +245,7 @@ mod tests {
             Ok((
                 "",
                 AssetDsc {
-                    id: "usd".into(),
+                    id: AssetId("usd".into()),
                     dsc: "USA dollar".into()
                 }
             ))
@@ -235,7 +255,7 @@ mod tests {
             Ok((
                 "",
                 AssetDsc {
-                    id: "usd".into(),
+                    id: AssetId("usd".into()),
                     dsc: "USA dollar".into()
                 }
             ))
@@ -246,7 +266,7 @@ mod tests {
             Ok((
                 "nice ",
                 AssetDsc {
-                    id: "usd".into(),
+                    id: AssetId("usd".into()),
                     dsc: "USA dollar".into()
                 }
             ))
@@ -257,7 +277,7 @@ mod tests {
             Ok((
                 "",
                 AssetDsc {
-                    id: "usd".into(),
+                    id: AssetId("usd".into()),
                     dsc: "USA dollar".into()
                 }
             ))
@@ -271,7 +291,7 @@ mod tests {
             Ok((
                 "",
                 Backet {
-                    asset_id: "usd".into(),
+                    asset_id: AssetId("usd".into()),
                     count: nz(42)
                 }
             ))
@@ -281,7 +301,7 @@ mod tests {
             Ok((
                 "",
                 Backet {
-                    asset_id: "usd".into(),
+                    asset_id: AssetId("usd".into()),
                     count: nz(42)
                 }
             ))
@@ -295,7 +315,7 @@ mod tests {
             Ok((
                 "",
                 AssetDsc {
-                    id: "usd".into(),
+                    id: AssetId("usd".into()),
                     dsc: "USA dollar".into()
                 }
             ))
@@ -309,7 +329,7 @@ mod tests {
             Ok((
                 "",
                 Backet {
-                    asset_id: "milk".into(),
+                    asset_id: AssetId("milk".into()),
                     count: nz(3)
                 }
             ))
@@ -323,7 +343,7 @@ mod tests {
             Ok((
                 "",
                 UserCash {
-                    user_id: "Alice".into(),
+                    user_id: UserId("Alice".into()),
                     count: nz(500)
                 }
             ))
@@ -339,9 +359,9 @@ mod tests {
             Ok((
                 "",
                 UserBacket {
-                    user_id: "Bob".into(),
+                    user_id: UserId("Bob".into()),
                     backet: Backet {
-                        asset_id: "milk".into(),
+                        asset_id: AssetId("milk".into()),
                         count: nz(3)
                     }
                 }
@@ -358,9 +378,9 @@ mod tests {
             Ok((
                 "",
                 UserBackets {
-                    user_id: "Bob".into(),
+                    user_id: UserId("Bob".into()),
                     backets: vec![Backet {
-                        asset_id: "milk".into(),
+                        asset_id: AssetId("milk".into()),
                         count: nz(3)
                     }]
                 }
@@ -377,9 +397,9 @@ mod tests {
             Ok((
                 "",
                 Announcements(vec![UserBackets {
-                    user_id: "Bob".into(),
+                    user_id: UserId("Bob".into()),
                     backets: vec![Backet {
-                        asset_id: "milk".into(),
+                        asset_id: AssetId("milk".into()),
                         count: nz(3)
                     }]
                 }])
