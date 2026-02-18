@@ -711,6 +711,7 @@ pub(crate) fn take<T: Parser>(count: usize, parser: T) -> Take<T> {
 mod tests {
     use super::*;
     use std::num::NonZeroU32;
+    use proptest::prelude::*;
 
     fn nz(n: u32) -> NonZeroU32 {
         NonZeroU32::new(n).unwrap()
@@ -848,5 +849,68 @@ mod tests {
         );
         assert!(list(primitives::U32).parse("1,2,3,4,").is_err());
         assert_eq!(list(primitives::U32).parse("[]"), Ok(("", vec![])));
+    }
+
+    #[test]
+    fn test_permutation3_all_orderings() {
+        let parser = || {
+            permutation3(
+                key_value("a", primitives::U32),
+                key_value("b", primitives::U32),
+                key_value("c", primitives::U32),
+            )
+        };
+        let expected = (nz(1), nz(2), nz(3));
+
+        // a, b, c
+        assert_eq!(
+            parser().parse(r#""a":1,"b":2,"c":3,"#),
+            Ok(("", expected))
+        );
+        // a, c, b
+        assert_eq!(
+            parser().parse(r#""a":1,"c":3,"b":2,"#),
+            Ok(("", expected))
+        );
+        // b, a, c
+        assert_eq!(
+            parser().parse(r#""b":2,"a":1,"c":3,"#),
+            Ok(("", expected))
+        );
+        // b, c, a
+        assert_eq!(
+            parser().parse(r#""b":2,"c":3,"a":1,"#),
+            Ok(("", expected))
+        );
+        // c, a, b
+        assert_eq!(
+            parser().parse(r#""c":3,"a":1,"b":2,"#),
+            Ok(("", expected))
+        );
+        // c, b, a
+        assert_eq!(
+            parser().parse(r#""c":3,"b":2,"a":1,"#),
+            Ok(("", expected))
+        );
+    }
+
+    #[test]
+    fn test_permutation3_error_on_missing_field() {
+        let parser = permutation3(
+            key_value("a", primitives::U32),
+            key_value("b", primitives::U32),
+            key_value("c", primitives::U32),
+        );
+        // Only two of three fields provided
+        assert!(parser.parse(r#""a":1,"b":2,"#).is_err());
+    }
+
+    proptest! {
+        #[test]
+        fn test_quote_unquote_roundtrip(s in ".*") {
+            let quoted = quote(&s);
+            let result = unquote_escaped(&quoted);
+            prop_assert_eq!(result, Ok(("", s)));
+        }
     }
 }
