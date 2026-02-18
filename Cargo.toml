@@ -12,3 +12,5 @@ name = "cli"
 path = "src/main.rs"
 
 [dependencies]
+thiserror = "2"
+anyhow = "1"

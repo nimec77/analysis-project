@@ -1,8 +1,22 @@
+/// Structured error type for parser failures.
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub enum ParseError {
+    /// Input did not match the expected pattern.
+    #[error("unexpected input: {0}")]
+    UnexpectedInput(&'static str),
+    /// Input ended before the parser could finish.
+    #[error("incomplete input: {0}")]
+    IncompleteInput(&'static str),
+    /// A parsed value was out of range or otherwise invalid.
+    #[error("invalid value: {0}")]
+    InvalidValue(&'static str),
+}
+
 /// Трейт, чтобы **реализовывать** и **требовать** метод 'распарсь и покажи,
 /// что распарсить осталось'
 pub trait Parser {
     type Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()>;
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError>;
 }
 /// Вспомогательный трейт, чтобы писать собственный десериализатор
 /// (по решаемой задаче - отдалённый аналог `serde::Deserialize`)
@@ -13,7 +27,7 @@ pub trait Parsable: Sized {
 
 pub(crate) mod primitives {
     // parsers for std types
-    use super::Parser;
+    use super::{ParseError, Parser};
     use std::num::NonZeroU32;
 
     /// Беззнаковые числа
@@ -21,7 +35,7 @@ pub(crate) mod primitives {
     pub struct U32;
     impl Parser for U32 {
         type Dest = NonZeroU32;
-        fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+        fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
             let (remaining, is_hex) = input
                 .strip_prefix("0x")
                 .map_or((input, false), |remaining| (remaining, true));
@@ -34,8 +48,8 @@ pub(crate) mod primitives {
                 })
                 .unwrap_or(remaining.len());
             let value = u32::from_str_radix(&remaining[..end_idx], if is_hex { 16 } else { 10 })
-                .map_err(|_| ())?;
-            let non_zero = NonZeroU32::new(value).ok_or(())?;
+                .map_err(|_| ParseError::InvalidValue("invalid u32 literal"))?;
+            let non_zero = NonZeroU32::new(value).ok_or(ParseError::InvalidValue("zero is not allowed"))?;
             Ok((&remaining[end_idx..], non_zero))
         }
     }
@@ -44,15 +58,15 @@ pub(crate) mod primitives {
     pub struct I32;
     impl Parser for I32 {
         type Dest = i32;
-        fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+        fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
             let end_idx = input
                 .char_indices()
                 .skip(1)
                 .find_map(|(idx, c)| (!c.is_ascii_digit()).then_some(idx))
                 .unwrap_or(input.len());
-            let value = input[..end_idx].parse().map_err(|_| ())?;
+            let value = input[..end_idx].parse().map_err(|_| ParseError::InvalidValue("invalid i32 literal"))?;
             if value == 0 {
-                return Err(()); // в наших логах нет нулей, ноль в операции - фикция
+                return Err(ParseError::InvalidValue("zero is not allowed")); // в наших логах нет нулей, ноль в операции - фикция
             }
             Ok((&input[end_idx..], value))
         }
@@ -62,12 +76,12 @@ pub(crate) mod primitives {
     pub struct Byte;
     impl Parser for Byte {
         type Dest = u8;
-        fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
-            let (to_parse, remaining) = input.split_at_checked(2).ok_or(())?;
+        fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
+            let (to_parse, remaining) = input.split_at_checked(2).ok_or(ParseError::IncompleteInput("expected 2 hex digits"))?;
             if !to_parse.chars().all(|c| c.is_ascii_hexdigit()) {
-                return Err(());
+                return Err(ParseError::UnexpectedInput("expected hex digit"));
             }
-            let value = u8::from_str_radix(to_parse, 16).map_err(|_| ())?;
+            let value = u8::from_str_radix(to_parse, 16).map_err(|_| ParseError::InvalidValue("invalid hex byte"))?;
             Ok((remaining, value))
         }
     }
@@ -90,10 +104,10 @@ fn quote(input: &str) -> String {
 }
 /// Распарсить строку, которую ранее [обернули в кавычки](quote)
 // `"abc\"def\\ghi"nice` -> (`abcd"def\ghi`, `nice`)
-fn unquote_escaped(input: &str) -> Result<(&str, String), ()> {
+fn unquote_escaped(input: &str) -> Result<(&str, String), ParseError> {
     let mut result = String::new();
     let mut escaped_now = false;
-    let mut chars = input.strip_prefix("\"").ok_or(())?.chars();
+    let mut chars = input.strip_prefix("\"").ok_or(ParseError::UnexpectedInput("expected opening quote"))?.chars();
     while let Some(c) = chars.next() {
         match (c, escaped_now) {
             ('"' | '\\', true) => {
@@ -108,15 +122,15 @@ fn unquote_escaped(input: &str) -> Result<(&str, String), ()> {
             }
         }
     }
-    Err(()) // строка кончилась, не закрыв кавычку
+    Err(ParseError::IncompleteInput("unclosed quote")) // строка кончилась, не закрыв кавычку
 }
 /// Распарсить строку, обёрную в кавычки
 /// (сокращённая версия [unquote_escaped], в которой вложенные кавычки не предусмотрены)
-fn unquote_simple(input: &str) -> Result<(&str, &str), ()> {
-    let input = input.strip_prefix("\"").ok_or(())?;
-    let quote_byteidx = input.find('"').ok_or(())?;
+fn unquote_simple(input: &str) -> Result<(&str, &str), ParseError> {
+    let input = input.strip_prefix("\"").ok_or(ParseError::UnexpectedInput("expected opening quote"))?;
+    let quote_byteidx = input.find('"').ok_or(ParseError::IncompleteInput("unclosed quote"))?;
     if 0 == quote_byteidx || Some("\\") == input.get(quote_byteidx - 1..quote_byteidx) {
-        return Err(());
+        return Err(ParseError::UnexpectedInput("empty or escaped quote"));
     }
     Ok((&input[1 + quote_byteidx..], &input[..quote_byteidx]))
 }
@@ -125,7 +139,7 @@ fn unquote_simple(input: &str) -> Result<(&str, &str), ()> {
 pub struct Unquote;
 impl Parser for Unquote {
     type Dest = String;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         unquote_escaped(input)
     }
 }
@@ -141,8 +155,8 @@ pub struct Tag {
 }
 impl Parser for Tag {
     type Dest = ();
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
-        Ok((input.strip_prefix(self.tag).ok_or(())?, ()))
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
+        Ok((input.strip_prefix(self.tag).ok_or(ParseError::UnexpectedInput("tag mismatch"))?, ()))
     }
 }
 /// Конструктор [Tag]
@@ -154,10 +168,10 @@ pub(crate) fn tag(tag: &'static str) -> Tag {
 pub(crate) struct QuotedTag(Tag);
 impl Parser for QuotedTag {
     type Dest = ();
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         let (remaining, candidate) = unquote_simple(input)?;
         if !self.0.parse(candidate)?.0.is_empty() {
-            return Err(());
+            return Err(ParseError::UnexpectedInput("quoted tag has trailing content"));
         }
         Ok((remaining, ()))
     }
@@ -173,7 +187,7 @@ pub struct StripWhitespace<T> {
 }
 impl<T: Parser> Parser for StripWhitespace<T> {
     type Dest = T::Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         self.parser
             .parse(input.trim_start())
             .map(|(remaining, parsed)| (remaining.trim_start(), parsed))
@@ -203,7 +217,7 @@ where
     Suffix: Parser,
 {
     type Dest = T::Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         let (remaining, _) = self.prefix_to_ignore.parse(input)?;
         let (remaining, result) = self.dest_parser.parse(remaining)?;
         self.suffix_to_ignore
@@ -237,7 +251,7 @@ pub struct Map<T, M> {
 }
 impl<T: Parser, Dest: Sized, M: Fn(T::Dest) -> Dest> Parser for Map<T, M> {
     type Dest = Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         self.parser
             .parse(input)
             .map(|(remaining, pre_result)| (remaining, (self.map)(pre_result)))
@@ -260,7 +274,7 @@ where
     T: Parser,
 {
     type Dest = T::Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         let (remaining, _) = self.prefix_to_ignore.parse(input)?;
         self.dest_parser.parse(remaining)
     }
@@ -288,7 +302,7 @@ where
     A1: Parser,
 {
     type Dest = (A0::Dest, A1::Dest);
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         let (remaining, a0) = self.parser.0.parse(input)?;
         self.parser
             .1
@@ -308,7 +322,7 @@ where
     A2: Parser,
 {
     type Dest = (A0::Dest, A1::Dest, A2::Dest);
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         let (remaining, a0) = self.parser.0.parse(input)?;
         let (remaining, a1) = self.parser.1.parse(remaining)?;
         self.parser
@@ -325,7 +339,7 @@ where
     A3: Parser,
 {
     type Dest = (A0::Dest, A1::Dest, A2::Dest, A3::Dest);
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         let (remaining, a0) = self.parser.0.parse(input)?;
         let (remaining, a1) = self.parser.1.parse(remaining)?;
         let (remaining, a2) = self.parser.2.parse(remaining)?;
@@ -351,7 +365,7 @@ where
     T: Parser,
 {
     type Dest = T::Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         self.parser.parse(input)
     }
 }
@@ -382,14 +396,14 @@ where
     A1: Parser,
 {
     type Dest = (A0::Dest, A1::Dest);
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         match self.parsers.0.parse(input) {
             Ok((remaining, a0)) => self
                 .parsers
                 .1
                 .parse(remaining)
                 .map(|(remaining, a1)| (remaining, (a0, a1))),
-            Err(()) => self.parsers.1.parse(input).and_then(|(remaining, a1)| {
+            Err(_) => self.parsers.1.parse(input).and_then(|(remaining, a1)| {
                 self.parsers
                     .0
                     .parse(remaining)
@@ -410,7 +424,7 @@ where
     A2: Parser,
 {
     type Dest = (A0::Dest, A1::Dest, A2::Dest);
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         match self.parsers.0.parse(input) {
             Ok((remaining, a0)) => match self.parsers.1.parse(remaining) {
                 Ok((remaining, a1)) => self
@@ -418,35 +432,35 @@ where
                     .2
                     .parse(remaining)
                     .map(|(remaining, a2)| (remaining, (a0, a1, a2))),
-                Err(()) => self.parsers.2.parse(remaining).and_then(|(remaining, a2)| {
+                Err(_) => self.parsers.2.parse(remaining).and_then(|(remaining, a2)| {
                     self.parsers
                         .1
                         .parse(remaining)
                         .map(|(remaining, a1)| (remaining, (a0, a1, a2)))
                 }),
             },
-            Err(()) => match self.parsers.1.parse(input) {
+            Err(_) => match self.parsers.1.parse(input) {
                 Ok((remaining, a1)) => match self.parsers.0.parse(remaining) {
                     Ok((remaining, a0)) => self
                         .parsers
                         .2
                         .parse(remaining)
                         .map(|(remaining, a2)| (remaining, (a0, a1, a2))),
-                    Err(()) => self.parsers.2.parse(remaining).and_then(|(remaining, a2)| {
+                    Err(_) => self.parsers.2.parse(remaining).and_then(|(remaining, a2)| {
                         self.parsers
                             .0
                             .parse(remaining)
                             .map(|(remaining, a0)| (remaining, (a0, a1, a2)))
                     }),
                 },
-                Err(()) => self.parsers.2.parse(input).and_then(|(remaining, a2)| {
+                Err(_) => self.parsers.2.parse(input).and_then(|(remaining, a2)| {
                     match self.parsers.0.parse(remaining) {
                         Ok((remaining, a0)) => self
                             .parsers
                             .1
                             .parse(remaining)
                             .map(|(remaining, a1)| (remaining, (a0, a1, a2))),
-                        Err(()) => self.parsers.1.parse(remaining).and_then(|(remaining, a1)| {
+                        Err(_) => self.parsers.1.parse(remaining).and_then(|(remaining, a1)| {
                             self.parsers
                                 .0
                                 .parse(remaining)
@@ -479,8 +493,8 @@ pub struct List<T> {
 }
 impl<T: Parser> Parser for List<T> {
     type Dest = Vec<T::Dest>;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
-        let mut remaining = input.trim_start().strip_prefix('[').ok_or(())?.trim_start();
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
+        let mut remaining = input.trim_start().strip_prefix('[').ok_or(ParseError::UnexpectedInput("expected '['"))?.trim_start();
         let mut result = Vec::new();
         while !remaining.is_empty() {
             match remaining.strip_prefix(']') {
@@ -490,14 +504,14 @@ impl<T: Parser> Parser for List<T> {
                     let new_remaining = new_remaining
                         .trim_start()
                         .strip_prefix(',')
-                        .ok_or(())?
+                        .ok_or(ParseError::UnexpectedInput("expected ',' after list element"))?
                         .trim_start();
                     result.push(item);
                     remaining = new_remaining;
                 }
             }
         }
-        Err(()) // строка кончилась, не закрыв скобку
+        Err(ParseError::IncompleteInput("unclosed list bracket")) // строка кончилась, не закрыв скобку
     }
 }
 /// Конструктор для [List]
@@ -517,7 +531,7 @@ where
     A1: Parser<Dest = Dest>,
 {
     type Dest = Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         if let Ok(ok) = self.parser.0.parse(input) {
             return Ok(ok);
         }
@@ -539,7 +553,7 @@ where
     A2: Parser<Dest = Dest>,
 {
     type Dest = Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         // match вместо тут не подойдёт - нужно лениво
         if let Ok(ok) = self.parser.0.parse(input) {
             return Ok(ok);
@@ -574,7 +588,7 @@ where
     A3: Parser<Dest = Dest>,
 {
     type Dest = Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         if let Ok(ok) = self.parser.0.parse(input) {
             return Ok(ok);
         }
@@ -617,7 +631,7 @@ where
     A7: Parser<Dest = Dest>,
 {
     type Dest = Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         if let Ok(ok) = self.parser.0.parse(input) {
             return Ok(ok);
         }
@@ -677,7 +691,7 @@ pub struct Take<T> {
 }
 impl<T: Parser> Parser for Take<T> {
     type Dest = Vec<T::Dest>;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
+    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
         let mut remaining = input;
         let mut result = Vec::new();
         for _ in 0..self.count {
@@ -712,8 +726,8 @@ mod tests {
             primitives::U32.parse("411ab"),
             Ok(("ab", NonZeroU32::new(411).unwrap()))
         );
-        assert_eq!(primitives::U32.parse(""), Err(()));
-        assert_eq!(primitives::U32.parse("-3"), Err(()));
+        assert!(primitives::U32.parse("").is_err());
+        assert!(primitives::U32.parse("-3").is_err());
         assert_eq!(
             primitives::U32.parse("0x03"),
             Ok(("", NonZeroU32::new(0x3).unwrap()))
@@ -722,17 +736,17 @@ mod tests {
             primitives::U32.parse("0x03abg"),
             Ok(("g", NonZeroU32::new(0x3ab).unwrap()))
         );
-        assert_eq!(primitives::U32.parse("0x"), Err(()));
+        assert!(primitives::U32.parse("0x").is_err());
     }
 
     #[test]
     fn test_i32() {
         assert_eq!(primitives::I32.parse("411"), Ok(("", 411)));
         assert_eq!(primitives::I32.parse("411ab"), Ok(("ab", 411)));
-        assert_eq!(primitives::I32.parse(""), Err(()));
+        assert!(primitives::I32.parse("").is_err());
         assert_eq!(primitives::I32.parse("-3"), Ok(("", -3)));
-        assert_eq!(primitives::I32.parse("0x03"), Err(()));
-        assert_eq!(primitives::I32.parse("-"), Err(()));
+        assert!(primitives::I32.parse("0x03").is_err());
+        assert!(primitives::I32.parse("-").is_err());
     }
 
     #[test]
@@ -744,15 +758,15 @@ mod tests {
     #[test]
     fn test_unquote_simple() {
         assert_eq!(unquote_simple(r#""411""#), Ok(("", "411")));
-        assert_eq!(unquote_simple(r#" "411""#), Err(()));
-        assert_eq!(unquote_simple(r#"411"#), Err(()));
+        assert!(unquote_simple(r#" "411""#).is_err());
+        assert!(unquote_simple(r#"411"#).is_err());
     }
 
     #[test]
     fn test_unquote() {
         assert_eq!(Unquote.parse(r#""411""#), Ok(("", "411".into())));
-        assert_eq!(Unquote.parse(r#" "411""#), Err(()));
-        assert_eq!(Unquote.parse(r#"411"#), Err(()));
+        assert!(Unquote.parse(r#" "411""#).is_err());
+        assert!(Unquote.parse(r#"411"#).is_err());
 
         assert_eq!(Unquote.parse(r#""ni\\c\"e""#), Ok(("", r#"ni\c"e"#.into())));
     }
@@ -760,7 +774,7 @@ mod tests {
     #[test]
     fn test_tag() {
         assert_eq!(tag("key=").parse("key=value"), Ok(("value", ())));
-        assert_eq!(tag("key=").parse("key:value"), Err(()));
+        assert!(tag("key=").parse("key:value").is_err());
     }
 
     #[test]
@@ -769,8 +783,8 @@ mod tests {
             quoted_tag("key").parse(r#""key"=value"#),
             Ok(("=value", ()))
         );
-        assert_eq!(quoted_tag("key").parse(r#""key:"value"#), Err(()));
-        assert_eq!(quoted_tag("key").parse(r#"key=value"#), Err(()));
+        assert!(quoted_tag("key").parse(r#""key:"value"#).is_err());
+        assert!(quoted_tag("key").parse(r#"key=value"#).is_err());
     }
 
     #[test]
@@ -796,13 +810,11 @@ mod tests {
             delimited(tag("["), primitives::U32, tag("]")).parse("[0x32] nice"),
             Ok((" nice", nz(0x32)))
         );
-        assert_eq!(
-            delimited(tag("["), primitives::U32, tag("]")).parse("0x32]"),
-            Err(())
+        assert!(
+            delimited(tag("["), primitives::U32, tag("]")).parse("0x32]").is_err()
         );
-        assert_eq!(
-            delimited(tag("["), primitives::U32, tag("]")).parse("[0x32"),
-            Err(())
+        assert!(
+            delimited(tag("["), primitives::U32, tag("]")).parse("[0x32").is_err()
         );
     }
 
@@ -812,13 +824,11 @@ mod tests {
             key_value("key", primitives::U32).parse(r#""key":32,"#),
             Ok(("", nz(32)))
         );
-        assert_eq!(
-            key_value("key", primitives::U32).parse(r#"key:32,"#),
-            Err(())
+        assert!(
+            key_value("key", primitives::U32).parse(r#"key:32,"#).is_err()
         );
-        assert_eq!(
-            key_value("key", primitives::U32).parse(r#""key":32"#),
-            Err(())
+        assert!(
+            key_value("key", primitives::U32).parse(r#""key":32"#).is_err()
         );
         assert_eq!(
             key_value("key", primitives::U32).parse(r#" "key" : 32 , nice"#),
@@ -836,7 +846,7 @@ mod tests {
             list(primitives::U32).parse(" [ 1 , 2 , 3 , 4 , ] nice"),
             Ok(("nice", vec![nz(1), nz(2), nz(3), nz(4)]))
         );
-        assert_eq!(list(primitives::U32).parse("1,2,3,4,"), Err(()));
+        assert!(list(primitives::U32).parse("1,2,3,4,").is_err());
         assert_eq!(list(primitives::U32).parse("[]"), Ok(("", vec![])));
     }
 }

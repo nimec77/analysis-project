@@ -208,7 +208,7 @@ impl Parsable for Announcements {
 }
 
 /// Generic wrapper for parsing any [Parsable] type.
-pub fn just_parse<T: Parsable>(input: &str) -> Result<(&str, T), ()> {
+pub fn just_parse<T: Parsable>(input: &str) -> Result<(&str, T), ParseError> {
     T::parser().parse(input)
 }
 
@@ -409,8 +409,8 @@ mod tests {
 
     #[test]
     fn test_just_parse_error_cases() {
-        assert_eq!(just_parse::<AssetDsc>("invalid input"), Err(()));
-        assert_eq!(just_parse::<Backet>(""), Err(()));
-        assert_eq!(just_parse::<Announcements>("not a list"), Err(()));
+        assert!(just_parse::<AssetDsc>("invalid input").is_err());
+        assert!(just_parse::<Backet>("").is_err());
+        assert!(just_parse::<Announcements>("not a list").is_err());
     }
 }
