@@ -502,6 +502,15 @@ pub struct Alt<T> {
 }
 macro_rules! impl_alt {
     ($fn_name:ident [ $($A:ident $a:ident $idx:tt),+ ] $LastA:ident $last_a:ident $last_idx:tt) => {
+        impl_alt!(@impl [ $($A $a $idx),+ ] $LastA $last_a $last_idx);
+        #[allow(clippy::too_many_arguments)]
+        pub(crate) fn $fn_name<Dest, $($A: Parser<Dest = Dest>,)+ $LastA: Parser<Dest = Dest>>(
+            $($a: $A,)+ $last_a: $LastA,
+        ) -> Alt<($($A,)+ $LastA)> {
+            Alt { parser: ($($a,)+ $last_a) }
+        }
+    };
+    (@impl [ $($A:ident $a:ident $idx:tt),+ ] $LastA:ident $last_a:ident $last_idx:tt) => {
         impl<$($A,)+ $LastA, Dest> Parser for Alt<($($A,)+ $LastA)>
         where
             $($A: Parser<Dest = Dest>,)+
@@ -513,17 +522,14 @@ macro_rules! impl_alt {
                 self.parser.$last_idx.parse(input)
             }
         }
-        #[allow(clippy::too_many_arguments)]
-        pub(crate) fn $fn_name<Dest, $($A: Parser<Dest = Dest>,)+ $LastA: Parser<Dest = Dest>>(
-            $($a: $A,)+ $last_a: $LastA,
-        ) -> Alt<($($A,)+ $LastA)> {
-            Alt { parser: ($($a,)+ $last_a) }
-        }
     };
 }
 impl_alt!(alt2 [A0 a0 0] A1 a1 1);
 impl_alt!(alt3 [A0 a0 0, A1 a1 1] A2 a2 2);
 impl_alt!(alt4 [A0 a0 0, A1 a1 1, A2 a2 2] A3 a3 3);
+impl_alt!(@impl [A0 a0 0, A1 a1 1, A2 a2 2, A3 a3 3] A4 a4 4);
+impl_alt!(@impl [A0 a0 0, A1 a1 1, A2 a2 2, A3 a3 3, A4 a4 4] A5 a5 5);
+impl_alt!(@impl [A0 a0 0, A1 a1 1, A2 a2 2, A3 a3 3, A4 a4 4, A5 a5 5] A6 a6 6);
 impl_alt!(alt8 [A0 a0 0, A1 a1 1, A2 a2 2, A3 a3 3, A4 a4 4, A5 a5 5, A6 a6 6] A7 a7 7);
 
 /// Комбинатор для применения дочернего парсера N раз
