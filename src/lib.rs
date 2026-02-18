@@ -14,6 +14,39 @@ pub enum ReadMode {
     Exchanges,
 }
 
+/// Strategy trait for filtering log entries.
+///
+/// Implement this trait to define custom filtering logic for `read_log()`.
+/// `ReadMode` provides built-in implementations for common filtering modes.
+pub trait LogFilter {
+    /// Returns `true` if the given log entry should be included in results.
+    fn accepts(&self, log: &LogLine) -> bool;
+}
+
+impl LogFilter for ReadMode {
+    fn accepts(&self, log: &LogLine) -> bool {
+        match self {
+            ReadMode::All => true,
+            ReadMode::Errors => matches!(
+                &log.kind,
+                LogKind::System(SystemLogKind::Error(_))
+                    | LogKind::App(AppLogKind::Error(_))
+            ),
+            ReadMode::Exchanges => matches!(
+                &log.kind,
+                LogKind::App(AppLogKind::Journal(
+                    AppLogJournalKind::BuyAsset(_)
+                        | AppLogJournalKind::SellAsset(_)
+                        | AppLogJournalKind::CreateUser { .. }
+                        | AppLogJournalKind::RegisterAsset { .. }
+                        | AppLogJournalKind::DepositCash(_)
+                        | AppLogJournalKind::WithdrawCash(_)
+                ))
+            ),
+        }
+    }
+}
+
 /// Итератор, на выходе которого - строки распарсенной структуры данных
 struct LogIterator<R: Read> {
     #[allow(clippy::type_complexity)]
@@ -62,7 +95,7 @@ impl<R: Read> Iterator for LogIterator<R> {
 /// Принимает поток байт, отдаёт отфильтрованные и распарсенные логи
 pub fn read_log(
     input: impl Read,
-    mode: ReadMode,
+    filter: impl LogFilter,
     request_ids: Vec<NonZeroU32>,
 ) -> Result<Vec<LogLine>, std::io::Error> {
     let collected = LogIterator::new(input).collect::<Result<Vec<_>, _>>()?;
@@ -70,25 +103,7 @@ pub fn read_log(
         .into_iter()
         .filter(|log| {
             (request_ids.is_empty() || request_ids.contains(&log.request_id))
-                && match &mode {
-                    ReadMode::All => true,
-                    ReadMode::Errors => matches!(
-                        &log.kind,
-                        LogKind::System(SystemLogKind::Error(_))
-                            | LogKind::App(AppLogKind::Error(_))
-                    ),
-                    ReadMode::Exchanges => matches!(
-                        &log.kind,
-                        LogKind::App(AppLogKind::Journal(
-                            AppLogJournalKind::BuyAsset(_)
-                                | AppLogJournalKind::SellAsset(_)
-                                | AppLogJournalKind::CreateUser { .. }
-                                | AppLogJournalKind::RegisterAsset { .. }
-                                | AppLogJournalKind::DepositCash(_)
-                                | AppLogJournalKind::WithdrawCash(_)
-                        ))
-                    ),
-                }
+                && filter.accepts(log)
         })
         .collect())
 }
