@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 15: Modularity (split `parse.rs`)
+
+**Scope:** `src/parse.rs`, `src/parse/combinators.rs` (new), `src/parse/domain.rs` (new), `src/parse/log.rs` (new)
+
+Split the monolithic `src/parse.rs` (1762 lines) into a module directory with three sub-module files and a thin module root, using Rust edition 2024 module path conventions (no `mod.rs` files). Created `src/parse/combinators.rs` (842 lines) containing the `Parser` and `Parsable` traits, the `primitives` sub-module, all combinator structs and their constructor functions, and 11 combinator tests. Created `src/parse/domain.rs` (396 lines) containing the 7 domain types (`AuthData`, `AssetDsc`, `Backet`, `UserCash`, `UserBacket`, `UserBackets`, `Announcements`), their `Parsable` impls, the `just_parse` function, and 10 domain tests. Created `src/parse/log.rs` (557 lines) containing the 9 log hierarchy types (`LogLine`, `LogKind`, `SystemLogKind`, `SystemLogTraceKind`, `SystemLogErrorKind`, `AppLogKind`, `AppLogErrorKind`, `AppLogTraceKind`, `AppLogJournalKind`), their `Parsable` impls, and 2 log tests. Rewrote `src/parse.rs` as a 7-line module root with `mod` declarations and `pub use` re-exports. Changed all 17 constructor functions to `pub(crate)` visibility and the `primitives` module to `pub(crate) mod` for cross-sub-module access. Redistributed the monolithic test block into per-sub-module `#[cfg(test)] mod tests` blocks. This is a pure structural refactor -- no behavior changes, no new dependencies, no files other than `src/parse.rs` and the new sub-modules modified. `src/lib.rs` and `src/main.rs` are unchanged. All 26 tests pass; no test cases deleted. `cargo run -- example.log` output unchanged.
+
 ## Phase 14: Naming Improvements
 
 **Scope:** `src/parse.rs`
