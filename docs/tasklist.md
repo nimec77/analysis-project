@@ -28,7 +28,7 @@
 | :green_circle: | 15 | Modularity (split `parse.rs`) | `src/parse.rs`, `src/parse/*.rs` | Phase 14 |
 | :green_circle: | 16 | Newtype pattern (`UserId`, `AssetId`) | `src/parse/*.rs` | Phase 15 |
 | :green_circle: | 17 | Error handling (`ParseError`, `anyhow`) | `src/parse/*.rs`, `src/lib.rs`, `src/main.rs`, `Cargo.toml` | — |
-| :white_circle: | 18 | Strategy pattern (`LogFilter` trait) | `src/lib.rs` | — |
+| :green_circle: | 18 | Strategy pattern (`LogFilter` trait) | `src/lib.rs` | — |
 | :white_circle: | 19 | CLI argument parsing (`clap`) | `src/main.rs`, `Cargo.toml` | Phase 18 |
 | :white_circle: | 20 | `Display` trait for log types | `src/parse/*.rs` | Phase 15 |
 | :white_circle: | 21 | Property-based testing (`proptest`) | `src/parse/*.rs`, `Cargo.toml` | Phase 20 |
@@ -36,7 +36,7 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 18
+**Current Phase:** 19
 
 ---
 
@@ -273,10 +273,10 @@ Uses edition 2024 module paths (NO `mod.rs`).
 
 ## Phase 18: Strategy pattern (`LogFilter` trait)
 
-- [ ] Define `LogFilter` trait in `src/lib.rs`: `fn accepts(&self, log: &LogLine) -> bool`
-- [ ] Implement `LogFilter` for `ReadMode` (move existing match logic)
-- [ ] Update `read_log()` signature: `filter: impl LogFilter` instead of `mode: ReadMode`
-- [ ] Update call sites in `main.rs` and tests
+- [x] Define `LogFilter` trait in `src/lib.rs`: `fn accepts(&self, log: &LogLine) -> bool`
+- [x] Implement `LogFilter` for `ReadMode` (move existing match logic)
+- [x] Update `read_log()` signature: `filter: impl LogFilter` instead of `mode: ReadMode`
+- [x] Update call sites in `main.rs` and tests
 
 **Verify:** `cargo test && cargo run -- example.log`
 
