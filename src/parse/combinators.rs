@@ -92,8 +92,10 @@ pub(crate) mod primitives {
         }
     }
     /// Знаковые числа
+    #[cfg(test)]
     #[derive(Debug)]
     pub struct I32;
+    #[cfg(test)]
     impl Parser for I32 {
         type Dest = i32;
         fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
@@ -125,21 +127,6 @@ pub(crate) mod primitives {
     }
 }
 
-/// Обернуть строку в кавычки, экранировав кавычки, которые в строке уже есть
-fn quote(input: &str) -> String {
-    let mut result = String::from("\"");
-    result.extend(
-        input
-            .chars()
-            .map(|c| match c {
-                '\\' | '"' => ['\\', c].into_iter().take(2),
-                _ => [c, ' '].into_iter().take(1),
-            })
-            .flatten(),
-    );
-    result.push('"');
-    result
-}
 /// Распарсить строку, которую ранее [обернули в кавычки](quote)
 // `"abc\"def\\ghi"nice` -> (`abcd"def\ghi`, `nice`)
 fn unquote_escaped(input: &str) -> Result<(&str, String), ParseError> {
@@ -295,10 +282,6 @@ impl<T: Parser, Dest: Sized, M: Fn(T::Dest) -> Dest> Parser for Map<T, M> {
             .map(|(remaining, pre_result)| (remaining, (self.map)(pre_result)))
     }
 }
-/// Конструктор [Map]
-pub(crate) fn map<T: Parser, Dest: Sized, M: Fn(T::Dest) -> Dest>(parser: T, map: M) -> Map<T, M> {
-    Map { parser, map }
-}
 /// Комбинатор с отбрасываемым префиксом, упрощённая версия [Delimited]
 /// (аналог `preceeded` из `nom`)
 #[derive(Debug, Clone)]
@@ -317,81 +300,42 @@ where
         self.dest_parser.parse(remaining)
     }
 }
-/// Конструктор [Preceded]
-pub(crate) fn preceded<Prefix, T>(prefix_to_ignore: Prefix, dest_parser: T) -> Preceded<Prefix, T>
-where
-    Prefix: Parser,
-    T: Parser,
-{
-    Preceded {
-        prefix_to_ignore,
-        dest_parser,
-    }
-}
 /// Комбинатор, который требует, чтобы все дочерние парсеры отработали,
 /// (аналог `tuple` из `nom`)
 #[derive(Debug, Clone)]
 pub struct Tuple<T> {
     parser: T,
 }
-impl<A0, A1> Parser for Tuple<(A0, A1)>
-where
-    A0: Parser,
-    A1: Parser,
-{
-    type Dest = (A0::Dest, A1::Dest);
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
-        let (remaining, a0) = self.parser.0.parse(input)?;
-        self.parser
-            .1
-            .parse(remaining)
-            .map(|(remaining, a1)| (remaining, (a0, a1)))
-    }
+macro_rules! impl_tuple {
+    ($fn_name:ident, [ $($A:ident $a:ident $idx:tt),+ ], $LastA:ident $last_a:ident $last_idx:tt) => {
+        impl_tuple!(@impl [ $($A $a $idx),+ ], $LastA $last_a $last_idx);
+        pub(crate) fn $fn_name<$($A: Parser,)+ $LastA: Parser>(
+            $($a: $A,)+ $last_a: $LastA,
+        ) -> Tuple<($($A,)+ $LastA)> {
+            Tuple { parser: ($($a,)+ $last_a) }
+        }
+    };
+    (@impl [ $($A:ident $a:ident $idx:tt),+ ], $LastA:ident $last_a:ident $last_idx:tt) => {
+        impl<$($A: Parser,)+ $LastA: Parser> Parser for Tuple<($($A,)+ $LastA)> {
+            type Dest = ($($A::Dest,)+ $LastA::Dest);
+            fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
+                let remaining = input;
+                $(let (remaining, $a) = self.parser.$idx.parse(remaining)?;)+
+                self.parser.$last_idx.parse(remaining)
+                    .map(|(remaining, $last_a)| (remaining, ($($a,)+ $last_a)))
+            }
+        }
+    };
 }
-/// Конструктор [Tuple] для двух парсеров
-/// (в Rust нет чего-то, вроде variadic templates из C++)
-pub(crate) fn tuple2<A0: Parser, A1: Parser>(a0: A0, a1: A1) -> Tuple<(A0, A1)> {
-    Tuple { parser: (a0, a1) }
-}
-impl<A0, A1, A2> Parser for Tuple<(A0, A1, A2)>
-where
-    A0: Parser,
-    A1: Parser,
-    A2: Parser,
-{
-    type Dest = (A0::Dest, A1::Dest, A2::Dest);
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
-        let (remaining, a0) = self.parser.0.parse(input)?;
-        let (remaining, a1) = self.parser.1.parse(remaining)?;
-        self.parser
-            .2
-            .parse(remaining)
-            .map(|(remaining, a2)| (remaining, (a0, a1, a2)))
-    }
-}
-impl<A0, A1, A2, A3> Parser for Tuple<(A0, A1, A2, A3)>
-where
-    A0: Parser,
-    A1: Parser,
-    A2: Parser,
-    A3: Parser,
-{
-    type Dest = (A0::Dest, A1::Dest, A2::Dest, A3::Dest);
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
-        let (remaining, a0) = self.parser.0.parse(input)?;
-        let (remaining, a1) = self.parser.1.parse(remaining)?;
-        let (remaining, a2) = self.parser.2.parse(remaining)?;
-        self.parser
-            .3
-            .parse(remaining)
-            .map(|(remaining, a3)| (remaining, (a0, a1, a2, a3)))
-    }
-}
+impl_tuple!(tuple2, [A0 a0 0], A1 a1 1);
+impl_tuple!(@impl [A0 a0 0, A1 a1 1], A2 a2 2);
+impl_tuple!(@impl [A0 a0 0, A1 a1 1, A2 a2 2], A3 a3 3);
 /// Комбинатор, который вытаскивает значения из пары `"ключ":значение,`.
 /// Для простоты реализации, запятая всегда нужна в конце пары ключ-значение,
 /// простое '"ключ":значение' читаться не будет
 #[derive(Debug, Clone)]
 pub struct KeyValue<T> {
+    #[allow(clippy::type_complexity)]
     parser: Delimited<
         Tuple<(StripWhitespace<QuotedTag>, StripWhitespace<Tag>)>,
         StripWhitespace<T>,
@@ -450,11 +394,14 @@ where
         }
     }
 }
-/// Конструктор [Permutation] для двух парсеров
-/// (в Rust нет чего-то, вроде variadic templates из C++)
-pub(crate) fn permutation2<A0: Parser, A1: Parser>(a0: A0, a1: A1) -> Permutation<(A0, A1)> {
-    Permutation { parsers: (a0, a1) }
+macro_rules! permutation_fn {
+    ($fn_name:ident, $($A:ident $a:ident),+) => {
+        pub(crate) fn $fn_name<$($A: Parser),+>($($a: $A),+) -> Permutation<($($A),+)> {
+            Permutation { parsers: ($($a),+) }
+        }
+    };
 }
+permutation_fn!(permutation2, A0 a0, A1 a1);
 impl<A0, A1, A2> Parser for Permutation<(A0, A1, A2)>
 where
     A0: Parser,
@@ -510,17 +457,7 @@ where
         }
     }
 }
-/// Конструктор [Permutation] для трёх парсеров
-/// (в Rust нет чего-то, вроде variadic templates из C++)
-pub(crate) fn permutation3<A0: Parser, A1: Parser, A2: Parser>(
-    a0: A0,
-    a1: A1,
-    a2: A2,
-) -> Permutation<(A0, A1, A2)> {
-    Permutation {
-        parsers: (a0, a1, a2),
-    }
-}
+permutation_fn!(permutation3, A0 a0, A1 a1, A2 a2);
 /// Комбинатор списка из любого числа элементов, которые надо читать
 /// вложенным парсером. Граница списка определяется квадратными (`[`&`]`)
 /// скобками.
@@ -563,163 +500,31 @@ pub(crate) fn list<T: Parser>(parser: T) -> List<T> {
 pub struct Alt<T> {
     parser: T,
 }
-impl<A0, A1, Dest> Parser for Alt<(A0, A1)>
-where
-    A0: Parser<Dest = Dest>,
-    A1: Parser<Dest = Dest>,
-{
-    type Dest = Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
-        if let Ok(ok) = self.parser.0.parse(input) {
-            return Ok(ok);
+macro_rules! impl_alt {
+    ($fn_name:ident [ $($A:ident $a:ident $idx:tt),+ ] $LastA:ident $last_a:ident $last_idx:tt) => {
+        impl<$($A,)+ $LastA, Dest> Parser for Alt<($($A,)+ $LastA)>
+        where
+            $($A: Parser<Dest = Dest>,)+
+            $LastA: Parser<Dest = Dest>,
+        {
+            type Dest = Dest;
+            fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
+                $(if let Ok(ok) = self.parser.$idx.parse(input) { return Ok(ok); })+
+                self.parser.$last_idx.parse(input)
+            }
         }
-        self.parser.1.parse(input)
-    }
+        #[allow(clippy::too_many_arguments)]
+        pub(crate) fn $fn_name<Dest, $($A: Parser<Dest = Dest>,)+ $LastA: Parser<Dest = Dest>>(
+            $($a: $A,)+ $last_a: $LastA,
+        ) -> Alt<($($A,)+ $LastA)> {
+            Alt { parser: ($($a,)+ $last_a) }
+        }
+    };
 }
-/// Конструктор [Alt] для двух парсеров
-/// (в Rust нет чего-то, вроде variadic templates из C++)
-pub(crate) fn alt2<Dest, A0: Parser<Dest = Dest>, A1: Parser<Dest = Dest>>(
-    a0: A0,
-    a1: A1,
-) -> Alt<(A0, A1)> {
-    Alt { parser: (a0, a1) }
-}
-impl<A0, A1, A2, Dest> Parser for Alt<(A0, A1, A2)>
-where
-    A0: Parser<Dest = Dest>,
-    A1: Parser<Dest = Dest>,
-    A2: Parser<Dest = Dest>,
-{
-    type Dest = Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
-        // match вместо тут не подойдёт - нужно лениво
-        if let Ok(ok) = self.parser.0.parse(input) {
-            return Ok(ok);
-        }
-        if let Ok(ok) = self.parser.1.parse(input) {
-            return Ok(ok);
-        }
-        self.parser.2.parse(input)
-    }
-}
-/// Конструктор [Alt] для трёх парсеров
-/// (в Rust нет чего-то, вроде variadic templates из C++)
-pub(crate) fn alt3<
-    Dest,
-    A0: Parser<Dest = Dest>,
-    A1: Parser<Dest = Dest>,
-    A2: Parser<Dest = Dest>,
->(
-    a0: A0,
-    a1: A1,
-    a2: A2,
-) -> Alt<(A0, A1, A2)> {
-    Alt {
-        parser: (a0, a1, a2),
-    }
-}
-impl<A0, A1, A2, A3, Dest> Parser for Alt<(A0, A1, A2, A3)>
-where
-    A0: Parser<Dest = Dest>,
-    A1: Parser<Dest = Dest>,
-    A2: Parser<Dest = Dest>,
-    A3: Parser<Dest = Dest>,
-{
-    type Dest = Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
-        if let Ok(ok) = self.parser.0.parse(input) {
-            return Ok(ok);
-        }
-        if let Ok(ok) = self.parser.1.parse(input) {
-            return Ok(ok);
-        }
-        if let Ok(ok) = self.parser.2.parse(input) {
-            return Ok(ok);
-        }
-        self.parser.3.parse(input)
-    }
-}
-/// Конструктор [Alt] для четырёх парсеров
-/// (в Rust нет чего-то, вроде variadic templates из C++)
-pub(crate) fn alt4<
-    Dest,
-    A0: Parser<Dest = Dest>,
-    A1: Parser<Dest = Dest>,
-    A2: Parser<Dest = Dest>,
-    A3: Parser<Dest = Dest>,
->(
-    a0: A0,
-    a1: A1,
-    a2: A2,
-    a3: A3,
-) -> Alt<(A0, A1, A2, A3)> {
-    Alt {
-        parser: (a0, a1, a2, a3),
-    }
-}
-impl<A0, A1, A2, A3, A4, A5, A6, A7, Dest> Parser for Alt<(A0, A1, A2, A3, A4, A5, A6, A7)>
-where
-    A0: Parser<Dest = Dest>,
-    A1: Parser<Dest = Dest>,
-    A2: Parser<Dest = Dest>,
-    A3: Parser<Dest = Dest>,
-    A4: Parser<Dest = Dest>,
-    A5: Parser<Dest = Dest>,
-    A6: Parser<Dest = Dest>,
-    A7: Parser<Dest = Dest>,
-{
-    type Dest = Dest;
-    fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ParseError> {
-        if let Ok(ok) = self.parser.0.parse(input) {
-            return Ok(ok);
-        }
-        if let Ok(ok) = self.parser.1.parse(input) {
-            return Ok(ok);
-        }
-        if let Ok(ok) = self.parser.2.parse(input) {
-            return Ok(ok);
-        }
-        if let Ok(ok) = self.parser.3.parse(input) {
-            return Ok(ok);
-        }
-        if let Ok(ok) = self.parser.4.parse(input) {
-            return Ok(ok);
-        }
-        if let Ok(ok) = self.parser.5.parse(input) {
-            return Ok(ok);
-        }
-        if let Ok(ok) = self.parser.6.parse(input) {
-            return Ok(ok);
-        }
-        self.parser.7.parse(input)
-    }
-}
-/// Конструктор [Alt] для восьми парсеров
-/// (в Rust нет чего-то, вроде variadic templates из C++)
-pub(crate) fn alt8<
-    Dest,
-    A0: Parser<Dest = Dest>,
-    A1: Parser<Dest = Dest>,
-    A2: Parser<Dest = Dest>,
-    A3: Parser<Dest = Dest>,
-    A4: Parser<Dest = Dest>,
-    A5: Parser<Dest = Dest>,
-    A6: Parser<Dest = Dest>,
-    A7: Parser<Dest = Dest>,
->(
-    a0: A0,
-    a1: A1,
-    a2: A2,
-    a3: A3,
-    a4: A4,
-    a5: A5,
-    a6: A6,
-    a7: A7,
-) -> Alt<(A0, A1, A2, A3, A4, A5, A6, A7)> {
-    Alt {
-        parser: (a0, a1, a2, a3, a4, a5, a6, a7),
-    }
-}
+impl_alt!(alt2 [A0 a0 0] A1 a1 1);
+impl_alt!(alt3 [A0 a0 0, A1 a1 1] A2 a2 2);
+impl_alt!(alt4 [A0 a0 0, A1 a1 1, A2 a2 2] A3 a3 3);
+impl_alt!(alt8 [A0 a0 0, A1 a1 1, A2 a2 2, A3 a3 3, A4 a4 4, A5 a5 5, A6 a6 6] A7 a7 7);
 
 /// Комбинатор для применения дочернего парсера N раз
 /// (аналог `take` из `nom`)
@@ -786,6 +591,20 @@ mod tests {
         assert_eq!(primitives::I32.parse("-3"), Ok(("", -3)));
         assert!(primitives::I32.parse("0x03").is_err());
         assert!(primitives::I32.parse("-").is_err());
+    }
+
+    fn quote(input: &str) -> String {
+        let mut result = String::from("\"");
+        result.extend(
+            input
+                .chars()
+                .flat_map(|c| match c {
+                    '\\' | '"' => ['\\', c].into_iter().take(2),
+                    _ => [c, ' '].into_iter().take(1),
+                }),
+        );
+        result.push('"');
+        result
     }
 
     #[test]

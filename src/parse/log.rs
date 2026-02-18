@@ -521,10 +521,7 @@ mod tests {
     #[test]
     fn test_log_kind() {
         assert_eq!(
-            preceded(
-                strip_whitespace(tag("NetworkError")),
-                strip_whitespace(unquote())
-            )
+            unquote().strip_ws().preceded_by(tag("NetworkError").strip_ws())
             .parse(r#"NetworkError "url unknown""#),
             Ok(("", "url unknown".into()))
         );
