@@ -26,7 +26,7 @@
 | :green_circle: | 13 | Bug fix + dead code cleanup | `src/parse.rs` | — |
 | :green_circle: | 14 | Naming improvements | `src/parse.rs` | — |
 | :green_circle: | 15 | Modularity (split `parse.rs`) | `src/parse.rs`, `src/parse/*.rs` | Phase 14 |
-| :white_circle: | 16 | Newtype pattern (`UserId`, `AssetId`) | `src/parse/*.rs` | Phase 15 |
+| :green_circle: | 16 | Newtype pattern (`UserId`, `AssetId`) | `src/parse/*.rs` | Phase 15 |
 | :white_circle: | 17 | Error handling (`ParseError`, `anyhow`) | `src/parse/*.rs`, `src/lib.rs`, `src/main.rs`, `Cargo.toml` | — |
 | :white_circle: | 18 | Strategy pattern (`LogFilter` trait) | `src/lib.rs` | — |
 | :white_circle: | 19 | CLI argument parsing (`clap`) | `src/main.rs`, `Cargo.toml` | Phase 18 |
@@ -36,7 +36,7 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 16
+**Current Phase:** 17
 
 ---
 
@@ -239,14 +239,14 @@ Uses edition 2024 module paths (NO `mod.rs`).
 
 ## Phase 16: Newtype pattern (`UserId`, `AssetId`)
 
-- [ ] Define `pub struct UserId(pub String)` with `Debug, Clone, PartialEq`
-- [ ] Define `pub struct AssetId(pub String)` with `Debug, Clone, PartialEq`
-- [ ] Implement `Parsable` for `UserId` (delegate to `Unquote` + `Map`)
-- [ ] Implement `Parsable` for `AssetId` (delegate to `Unquote` + `Map`)
-- [ ] Replace `user_id: String` → `user_id: UserId` in `UserCash`, `UserBacket`, `UserBackets`, `AppLogJournalKind::{CreateUser, DeleteUser, RegisterAsset, UnregisterAsset}`
-- [ ] Replace `asset_id: String` / `id: String` → `AssetId` in `AssetDsc`, `Backet`, `AppLogJournalKind::{RegisterAsset, UnregisterAsset}`
-- [ ] Update all parser implementations
-- [ ] Update all tests
+- [x] Define `pub struct UserId(pub String)` with `Debug, Clone, PartialEq`
+- [x] Define `pub struct AssetId(pub String)` with `Debug, Clone, PartialEq`
+- [x] Implement `Parsable` for `UserId` (delegate to `Unquote` + `Map`)
+- [x] Implement `Parsable` for `AssetId` (delegate to `Unquote` + `Map`)
+- [x] Replace `user_id: String` → `user_id: UserId` in `UserCash`, `UserBacket`, `UserBackets`, `AppLogJournalKind::{CreateUser, DeleteUser, RegisterAsset, UnregisterAsset}`
+- [x] Replace `asset_id: String` / `id: String` → `AssetId` in `AssetDsc`, `Backet`, `AppLogJournalKind::{RegisterAsset, UnregisterAsset}`
+- [x] Update all parser implementations
+- [x] Update all tests
 
 **Depends on:** Phase 15
 
