@@ -4,12 +4,12 @@
 
 ## Tasks
 
-- [ ] 14.1 Rename `All` struct → `Tuple` (matches nom's naming for sequential parsing returning a tuple)
-- [ ] 14.2 Rename `all2()` → `tuple2()` and update all call sites
-- [ ] 14.3 Rename `stdp` module → `primitives`
-- [ ] 14.4 Rename `do_unquote()` → `unquote_escaped()`
-- [ ] 14.5 Rename `do_unquote_non_escaped()` → `unquote_simple()`
-- [ ] 14.6 Update all internal references and tests
+- [x] 14.1 Rename `All` struct → `Tuple` (matches nom's naming for sequential parsing returning a tuple)
+- [x] 14.2 Rename `all2()` → `tuple2()` and update all call sites
+- [x] 14.3 Rename `stdp` module → `primitives`
+- [x] 14.4 Rename `do_unquote()` → `unquote_escaped()`
+- [x] 14.5 Rename `do_unquote_non_escaped()` → `unquote_simple()`
+- [x] 14.6 Update all internal references and tests
 
 ## Acceptance Criteria
 

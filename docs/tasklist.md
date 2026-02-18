@@ -24,8 +24,8 @@
 | Status | Phase | Description | Files | Depends on |
 |--------|-------|-------------|-------|------------|
 | :green_circle: | 13 | Bug fix + dead code cleanup | `src/parse.rs` | — |
-| :white_circle: | 14 | Naming improvements | `src/parse.rs` | — |
-| :white_circle: | 15 | Modularity (split `parse.rs`) | `src/parse.rs`, `src/parse/*.rs` | Phase 14 |
+| :green_circle: | 14 | Naming improvements | `src/parse.rs` | — |
+| :green_circle: | 15 | Modularity (split `parse.rs`) | `src/parse.rs`, `src/parse/*.rs` | Phase 14 |
 | :white_circle: | 16 | Newtype pattern (`UserId`, `AssetId`) | `src/parse/*.rs` | Phase 15 |
 | :white_circle: | 17 | Error handling (`ParseError`, `anyhow`) | `src/parse/*.rs`, `src/lib.rs`, `src/main.rs`, `Cargo.toml` | — |
 | :white_circle: | 18 | Strategy pattern (`LogFilter` trait) | `src/lib.rs` | — |
@@ -36,7 +36,7 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 14
+**Current Phase:** 16
 
 ---
 
@@ -205,12 +205,12 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 14: Naming improvements
 
-- [ ] Rename `All` struct → `Tuple` (matches nom's naming for sequential parsing returning a tuple)
-- [ ] Rename `all2()` → `tuple2()` and update all call sites
-- [ ] Rename `stdp` module → `primitives`
-- [ ] Rename `do_unquote()` → `unquote_escaped()`
-- [ ] Rename `do_unquote_non_escaped()` → `unquote_simple()`
-- [ ] Update all internal references and tests
+- [x] Rename `All` struct → `Tuple` (matches nom's naming for sequential parsing returning a tuple)
+- [x] Rename `all2()` → `tuple2()` and update all call sites
+- [x] Rename `stdp` module → `primitives`
+- [x] Rename `do_unquote()` → `unquote_escaped()`
+- [x] Rename `do_unquote_non_escaped()` → `unquote_simple()`
+- [x] Update all internal references and tests
 
 Not changing: `A0/A1/A2` type params (standard tuple-impl pattern), `nz()` test helper, `AssetDsc.dsc` (matches domain key), arity suffixes (`alt2`, `permutation3`).
 
@@ -220,14 +220,14 @@ Not changing: `A0/A1/A2` type params (standard tuple-impl pattern), `nz()` test 
 
 ## Phase 15: Modularity (split `parse.rs`)
 
-- [ ] Create `src/parse/` directory
-- [ ] Move combinator framework (traits + structs) to `src/parse/combinators.rs`
-- [ ] Move domain types (AuthData, AssetDsc, Backet, etc.) to `src/parse/domain.rs`
-- [ ] Move log hierarchy (LogLine, LogKind, etc.) to `src/parse/log.rs`
-- [ ] Convert `src/parse.rs` to module root: `mod combinators; mod domain; mod log;` with `pub use` re-exports
-- [ ] Move `primitives` (ex-`stdp`) as private sub-module within `combinators.rs`
-- [ ] Refine visibility: constructor functions to `pub(crate)`
-- [ ] Move tests to `#[cfg(test)] mod tests` in each sub-module
+- [x] Create `src/parse/` directory
+- [x] Move combinator framework (traits + structs) to `src/parse/combinators.rs`
+- [x] Move domain types (AuthData, AssetDsc, Backet, etc.) to `src/parse/domain.rs`
+- [x] Move log hierarchy (LogLine, LogKind, etc.) to `src/parse/log.rs`
+- [x] Convert `src/parse.rs` to module root: `mod combinators; mod domain; mod log;` with `pub use` re-exports
+- [x] Move `primitives` (ex-`stdp`) as private sub-module within `combinators.rs`
+- [x] Refine visibility: constructor functions to `pub(crate)`
+- [x] Move tests to `#[cfg(test)] mod tests` in each sub-module
 
 Uses edition 2024 module paths (NO `mod.rs`).
 
