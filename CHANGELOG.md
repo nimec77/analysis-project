@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 22: Parser Fluent API
+
+**Scope:** `src/parse/combinators.rs`, `src/parse/domain.rs`, `src/parse/log.rs`
+
+Added `.map()`, `.preceded_by()`, and `.strip_ws()` chainable methods to the `Parser` trait, enabling fluent-style parser construction. `.map(f)` transforms parser output, `.preceded_by(prefix)` discards a prefix parser's result and returns the main parser's output, and `.strip_ws()` trims surrounding whitespace. Refactored `Parsable` implementations across domain and log types to use the fluent API where it improves readability, replacing explicit combinator nesting with method chains. All 42 tests pass; no test cases deleted. No behavior changes.
+
+## Phase 21: Property-Based Testing (`proptest`)
+
+**Scope:** `Cargo.toml`, `src/parse/combinators.rs`, `src/parse/domain.rs`, `src/parse/log.rs`
+
+Added `proptest = "1"` as a dev-dependency for property-based testing. Implemented roundtrip property tests (parse-display-reparse) for domain and log types, no-panic tests ensuring parsers never panic on arbitrary input, and suffix invariant tests verifying parsers handle trailing data correctly. Added missing unit tests for `WithdrawCash`, `DeleteUser`, and `UnregisterAsset` journal kinds. Added error case tests for domain types to verify correct rejection of malformed input. All 42 tests pass; no test cases deleted. No behavior changes.
+
+## Phase 20: `Display` Trait for Log Types
+
+**Scope:** `src/parse/domain.rs`, `src/parse/log.rs`, `src/main.rs`
+
+Implemented `Display` for all domain types (`AuthData`, `AssetDsc`, `Backet`, `UserCash`, `UserBacket`, `UserBackets`, `Announcements`, `UserId`, `AssetId`) and all log hierarchy types (`LogLine`, `LogKind`, `SystemLogKind`, `SystemLogTraceKind`, `SystemLogErrorKind`, `AppLogKind`, `AppLogErrorKind`, `AppLogTraceKind`, `AppLogJournalKind`). Each `Display` impl produces output that can be round-tripped through the corresponding parser. Updated `main.rs` to use `{}` format instead of `{:?}` for log output. All existing tests pass unchanged; no behavior changes in parsing logic.
+
+## Phase 19: CLI Argument Parsing (`clap`)
+
+**Scope:** `Cargo.toml`, `src/main.rs`
+
+Added `clap = { version = "4", features = ["derive"] }` dependency. Replaced manual argument parsing in `main.rs` with a `Cli` struct deriving `clap::Parser`, providing `--mode` (value enum: all, errors, exchanges), `--request-id` (comma-separated `NonZeroU32` list), and a positional `<filename>` argument. Added a `RequestIds` newtype with `FromStr` impl for comma-separated parsing. Free `--help` and `--version` flags via clap derive. All existing tests pass unchanged; no behavior changes.
+
+## Phase 18: Strategy Pattern (`LogFilter` Trait)
+
+**Scope:** `src/lib.rs`
+
+Extracted filtering logic from `read_log()` into a `LogFilter` trait with a single `fn accepts(&self, log: &LogLine) -> bool` method, implementing the strategy pattern. `ReadMode` implements `LogFilter` with the existing match-based filtering logic. The `read_log()` function signature now accepts `impl LogFilter` instead of `ReadMode`, allowing callers to supply custom filtering strategies. All existing tests pass unchanged; no behavior changes.
+
+## Phase 17: Error Handling (`ParseError`, `thiserror`, `anyhow`)
+
+**Scope:** `Cargo.toml`, `src/parse/combinators.rs`, `src/parse/domain.rs`, `src/main.rs`
+
+Added `thiserror = "2"` and `anyhow = "1"` dependencies. Defined a `ParseError` enum with `#[derive(thiserror::Error)]` containing structured error variants for parse failures, replacing the untyped `Result<T, ()>` return type used throughout the parser module. Updated all `Parser` trait implementations to return `Result<T, ParseError>`. Changed `main()` to return `anyhow::Result<()>` for ergonomic CLI error reporting. All existing tests pass unchanged; no behavior changes.
+
+## Phase 16: Newtype Pattern (`UserId`, `AssetId`)
+
+**Scope:** `src/parse/domain.rs`, `src/parse/log.rs`
+
+Created `UserId(String)` and `AssetId(String)` newtype wrappers to replace raw `String` fields used for user and asset identifiers throughout the domain and log types. Updated all struct definitions, parser implementations, and pattern matches in `domain.rs` and `log.rs` to use the new newtypes. This prevents accidental mixing of user IDs with asset IDs at the type level. All existing tests pass unchanged; no behavior changes.
+
 ## Phase 15: Modularity (split `parse.rs`)
 
 **Scope:** `src/parse.rs`, `src/parse/combinators.rs` (new), `src/parse/domain.rs` (new), `src/parse/log.rs` (new)
