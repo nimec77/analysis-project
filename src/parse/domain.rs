@@ -477,4 +477,100 @@ mod tests {
         assert!(just_parse::<Backet>("").is_err());
         assert!(just_parse::<Announcements>("not a list").is_err());
     }
+
+    #[test]
+    fn test_authdata_error_cases() {
+        // Empty input
+        assert!(AuthData::parser().parse("").is_err());
+        // Too short (only a few hex digits)
+        assert!(AuthData::parser().parse("30c305").is_err());
+        // Non-hex characters
+        assert!(AuthData::parser().parse("zzzz").is_err());
+    }
+
+    #[test]
+    fn test_asset_dsc_error_cases() {
+        // Wrong type name
+        assert!(AssetDsc::parser().parse(r#"Bucket{"id":"usd","dsc":"dollar",}"#).is_err());
+        // Missing closing brace
+        assert!(AssetDsc::parser().parse(r#"AssetDsc{"id":"usd","dsc":"dollar","#).is_err());
+        // Missing required field "dsc"
+        assert!(AssetDsc::parser().parse(r#"AssetDsc{"id":"usd",}"#).is_err());
+        // Missing required field "id"
+        assert!(AssetDsc::parser().parse(r#"AssetDsc{"dsc":"dollar",}"#).is_err());
+        // Empty input
+        assert!(AssetDsc::parser().parse("").is_err());
+    }
+
+    #[test]
+    fn test_backet_error_cases() {
+        // Wrong type name
+        assert!(Backet::parser().parse(r#"Basket{"asset_id":"usd","count":1,}"#).is_err());
+        // Missing closing brace
+        assert!(Backet::parser().parse(r#"Backet{"asset_id":"usd","count":1,"#).is_err());
+        // Missing required field "count"
+        assert!(Backet::parser().parse(r#"Backet{"asset_id":"usd",}"#).is_err());
+        // Missing required field "asset_id"
+        assert!(Backet::parser().parse(r#"Backet{"count":1,}"#).is_err());
+        // Zero count (NonZeroU32 rejects zero)
+        assert!(Backet::parser().parse(r#"Backet{"asset_id":"usd","count":0,}"#).is_err());
+        // Empty input
+        assert!(Backet::parser().parse("").is_err());
+    }
+
+    #[test]
+    fn test_user_cash_error_cases() {
+        // Wrong type name
+        assert!(UserCash::parser().parse(r#"Cash{"user_id":"Bob","count":1,}"#).is_err());
+        // Missing closing brace
+        assert!(UserCash::parser().parse(r#"UserCash{"user_id":"Bob","count":1,"#).is_err());
+        // Missing required field "count"
+        assert!(UserCash::parser().parse(r#"UserCash{"user_id":"Bob",}"#).is_err());
+        // Missing required field "user_id"
+        assert!(UserCash::parser().parse(r#"UserCash{"count":1,}"#).is_err());
+        // Zero count
+        assert!(UserCash::parser().parse(r#"UserCash{"user_id":"Bob","count":0,}"#).is_err());
+        // Empty input
+        assert!(UserCash::parser().parse("").is_err());
+    }
+
+    #[test]
+    fn test_user_backet_error_cases() {
+        // Wrong type name
+        assert!(UserBacket::parser().parse(r#"Backet{"user_id":"Bob","backet":Backet{"asset_id":"x","count":1,},}"#).is_err());
+        // Missing closing brace
+        assert!(UserBacket::parser().parse(r#"UserBacket{"user_id":"Bob","backet":Backet{"asset_id":"x","count":1,},"#).is_err());
+        // Missing required field "backet"
+        assert!(UserBacket::parser().parse(r#"UserBacket{"user_id":"Bob",}"#).is_err());
+        // Missing required field "user_id"
+        assert!(UserBacket::parser().parse(r#"UserBacket{"backet":Backet{"asset_id":"x","count":1,},}"#).is_err());
+        // Empty input
+        assert!(UserBacket::parser().parse("").is_err());
+    }
+
+    #[test]
+    fn test_user_backets_error_cases() {
+        // Wrong type name
+        assert!(UserBackets::parser().parse(r#"Backets{"user_id":"Bob","backets":[],}"#).is_err());
+        // Missing closing brace
+        assert!(UserBackets::parser().parse(r#"UserBackets{"user_id":"Bob","backets":[],"#).is_err());
+        // Missing required field "backets"
+        assert!(UserBackets::parser().parse(r#"UserBackets{"user_id":"Bob",}"#).is_err());
+        // Missing required field "user_id"
+        assert!(UserBackets::parser().parse(r#"UserBackets{"backets":[],}"#).is_err());
+        // Empty input
+        assert!(UserBackets::parser().parse("").is_err());
+    }
+
+    #[test]
+    fn test_announcements_error_cases() {
+        // Not a list (no brackets)
+        assert!(Announcements::parser().parse("not a list").is_err());
+        // Unclosed bracket
+        assert!(Announcements::parser().parse("[").is_err());
+        // Invalid element inside list
+        assert!(Announcements::parser().parse("[invalid,]").is_err());
+        // Empty input
+        assert!(Announcements::parser().parse("").is_err());
+    }
 }

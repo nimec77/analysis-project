@@ -577,6 +577,7 @@ impl Parsable for LogLine {
 mod tests {
     use super::*;
     use std::num::NonZeroU32;
+    use proptest::prelude::*;
 
     fn nz(n: u32) -> NonZeroU32 {
         NonZeroU32::new(n).unwrap()
@@ -656,5 +657,81 @@ mod tests {
                 )))
             ))
         );
+    }
+
+    #[test]
+    fn test_withdraw_cash_standalone() {
+        assert_eq!(
+            AppLogJournalKind::parser()
+                .parse(r#"Journal WithdrawCash UserCash{"user_id":"Bob","count":100,}"#),
+            Ok((
+                "",
+                AppLogJournalKind::WithdrawCash(UserCash {
+                    user_id: UserId("Bob".into()),
+                    count: nz(100)
+                })
+            ))
+        );
+    }
+
+    #[test]
+    fn test_delete_user_standalone() {
+        assert_eq!(
+            AppLogJournalKind::parser()
+                .parse(r#"Journal DeleteUser {"user_id":"Alice",}"#),
+            Ok((
+                "",
+                AppLogJournalKind::DeleteUser {
+                    user_id: UserId("Alice".into())
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_unregister_asset_standalone() {
+        assert_eq!(
+            AppLogJournalKind::parser()
+                .parse(r#"Journal UnregisterAsset {"asset_id":"btc","user_id":"Bob",}"#),
+            Ok((
+                "",
+                AppLogJournalKind::UnregisterAsset {
+                    asset_id: AssetId("btc".into()),
+                    user_id: UserId("Bob".into())
+                }
+            ))
+        );
+        // Test reverse field order
+        assert_eq!(
+            AppLogJournalKind::parser()
+                .parse(r#"Journal UnregisterAsset {"user_id":"Bob","asset_id":"btc",}"#),
+            Ok((
+                "",
+                AppLogJournalKind::UnregisterAsset {
+                    asset_id: AssetId("btc".into()),
+                    user_id: UserId("Bob".into())
+                }
+            ))
+        );
+    }
+
+    proptest! {
+        #[test]
+        fn test_logline_parser_no_panic(s in ".*") {
+            // Parser must never panic on arbitrary input; errors are fine.
+            let _ = LogLine::parser().parse(&s);
+        }
+
+        #[test]
+        fn test_logline_parser_suffix_invariant(s in ".*") {
+            if let Ok((remaining, _)) = LogLine::parser().parse(&s) {
+                prop_assert!(
+                    s.ends_with(remaining),
+                    "remaining {:?} is not a suffix of input {:?}",
+                    remaining,
+                    s
+                );
+            }
+        }
     }
 }
