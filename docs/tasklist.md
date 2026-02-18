@@ -23,7 +23,7 @@
 
 | Status | Phase | Description | Files | Depends on |
 |--------|-------|-------------|-------|------------|
-| :white_circle: | 13 | Bug fix + dead code cleanup | `src/parse.rs` | — |
+| :green_circle: | 13 | Bug fix + dead code cleanup | `src/parse.rs` | — |
 | :white_circle: | 14 | Naming improvements | `src/parse.rs` | — |
 | :white_circle: | 15 | Modularity (split `parse.rs`) | `src/parse.rs`, `src/parse/*.rs` | Phase 14 |
 | :white_circle: | 16 | Newtype pattern (`UserId`, `AssetId`) | `src/parse/*.rs` | Phase 15 |
@@ -36,7 +36,7 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 13
+**Current Phase:** 14
 
 ---
 
@@ -191,13 +191,13 @@ Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle
 
 ## Phase 13: Bug fix + dead code cleanup
 
-- [ ] Fix `WithdrawCash` bug: `src/parse.rs:1320` maps to `DepositCash` instead of `WithdrawCash`
-- [ ] Add dedicated `WithdrawCash` parsing test to prevent regression
-- [ ] Remove unused `AsIs` struct + Parser impl (~line 138)
-- [ ] Remove unused `Either<L,R>` enum (~line 731)
-- [ ] Remove unused `Status` enum + Parsable impl (~line 737)
-- [ ] Remove unused `all3()` constructor (~line 331)
-- [ ] Remove unused `all4()` constructor (~line 356)
+- [x] Fix `WithdrawCash` bug: `src/parse.rs:1320` maps to `DepositCash` instead of `WithdrawCash`
+- [x] Add dedicated `WithdrawCash` parsing test to prevent regression
+- [x] Remove unused `AsIs` struct + Parser impl (~line 138)
+- [x] Remove unused `Either<L,R>` enum (~line 731)
+- [x] Remove unused `Status` enum + Parsable impl (~line 737)
+- [x] Remove unused `all3()` constructor (~line 331)
+- [x] Remove unused `all4()` constructor (~line 356)
 
 **Verify:** `cargo test && cargo run -- example.log`
 

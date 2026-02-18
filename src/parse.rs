@@ -11,7 +11,7 @@ pub trait Parsable: Sized {
     fn parser() -> Self::Parser;
 }
 
-mod stdp {
+mod primitives {
     // parsers for std types
     use super::Parser;
     use std::num::NonZeroU32;
@@ -90,7 +90,7 @@ fn quote(input: &str) -> String {
 }
 /// Распарсить строку, которую ранее [обернули в кавычки](quote)
 // `"abc\"def\\ghi"nice` -> (`abcd"def\ghi`, `nice`)
-fn do_unquote(input: &str) -> Result<(&str, String), ()> {
+fn unquote_escaped(input: &str) -> Result<(&str, String), ()> {
     let mut result = String::new();
     let mut escaped_now = false;
     let mut chars = input.strip_prefix("\"").ok_or(())?.chars();
@@ -111,8 +111,8 @@ fn do_unquote(input: &str) -> Result<(&str, String), ()> {
     Err(()) // строка кончилась, не закрыв кавычку
 }
 /// Распарсить строку, обёрную в кавычки
-/// (сокращённая версия [do_unquote], в которой вложенные кавычки не предусмотрены)
-fn do_unquote_non_escaped(input: &str) -> Result<(&str, &str), ()> {
+/// (сокращённая версия [unquote_escaped], в которой вложенные кавычки не предусмотрены)
+fn unquote_simple(input: &str) -> Result<(&str, &str), ()> {
     let input = input.strip_prefix("\"").ok_or(())?;
     let quote_byteidx = input.find('"').ok_or(())?;
     if 0 == quote_byteidx || Some("\\") == input.get(quote_byteidx - 1..quote_byteidx) {
@@ -126,7 +126,7 @@ pub struct Unquote;
 impl Parser for Unquote {
     type Dest = String;
     fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
-        do_unquote(input)
+        unquote_escaped(input)
     }
 }
 /// Конструктор [Unquote]
@@ -155,7 +155,7 @@ struct QuotedTag(Tag);
 impl Parser for QuotedTag {
     type Dest = ();
     fn parse<'a>(&self, input: &'a str) -> Result<(&'a str, Self::Dest), ()> {
-        let (remaining, candidate) = do_unquote_non_escaped(input)?;
+        let (remaining, candidate) = unquote_simple(input)?;
         if !self.0.parse(candidate)?.0.is_empty() {
             return Err(());
         }
@@ -277,12 +277,12 @@ where
     }
 }
 /// Комбинатор, который требует, чтобы все дочерние парсеры отработали,
-/// (аналог `all` из `nom`)
+/// (аналог `tuple` из `nom`)
 #[derive(Debug, Clone)]
-pub struct All<T> {
+pub struct Tuple<T> {
     parser: T,
 }
-impl<A0, A1> Parser for All<(A0, A1)>
+impl<A0, A1> Parser for Tuple<(A0, A1)>
 where
     A0: Parser,
     A1: Parser,
@@ -296,12 +296,12 @@ where
             .map(|(remaining, a1)| (remaining, (a0, a1)))
     }
 }
-/// Конструктор [All] для двух парсеров
+/// Конструктор [Tuple] для двух парсеров
 /// (в Rust нет чего-то, вроде variadic templates из C++)
-fn all2<A0: Parser, A1: Parser>(a0: A0, a1: A1) -> All<(A0, A1)> {
-    All { parser: (a0, a1) }
+fn tuple2<A0: Parser, A1: Parser>(a0: A0, a1: A1) -> Tuple<(A0, A1)> {
+    Tuple { parser: (a0, a1) }
 }
-impl<A0, A1, A2> Parser for All<(A0, A1, A2)>
+impl<A0, A1, A2> Parser for Tuple<(A0, A1, A2)>
 where
     A0: Parser,
     A1: Parser,
@@ -317,7 +317,7 @@ where
             .map(|(remaining, a2)| (remaining, (a0, a1, a2)))
     }
 }
-impl<A0, A1, A2, A3> Parser for All<(A0, A1, A2, A3)>
+impl<A0, A1, A2, A3> Parser for Tuple<(A0, A1, A2, A3)>
 where
     A0: Parser,
     A1: Parser,
@@ -341,7 +341,7 @@ where
 #[derive(Debug, Clone)]
 pub struct KeyValue<T> {
     parser: Delimited<
-        All<(StripWhitespace<QuotedTag>, StripWhitespace<Tag>)>,
+        Tuple<(StripWhitespace<QuotedTag>, StripWhitespace<Tag>)>,
         StripWhitespace<T>,
         StripWhitespace<Tag>,
     >,
@@ -359,7 +359,7 @@ where
 fn key_value<T: Parser>(key: &'static str, value_parser: T) -> KeyValue<T> {
     KeyValue {
         parser: delimited(
-            all2(
+            tuple2(
                 strip_whitespace(quoted_tag(key)),
                 strip_whitespace(tag(":")),
             ),
@@ -691,9 +691,9 @@ const AUTHDATA_SIZE: usize = 1024;
 #[derive(Debug, Clone, PartialEq)]
 pub struct AuthData([u8; AUTHDATA_SIZE]);
 impl Parsable for AuthData {
-    type Parser = Map<Take<stdp::Byte>, fn(Vec<u8>) -> Self>;
+    type Parser = Map<Take<primitives::Byte>, fn(Vec<u8>) -> Self>;
     fn parser() -> Self::Parser {
-        map(take(AUTHDATA_SIZE, stdp::Byte), |authdata| {
+        map(take(AUTHDATA_SIZE, primitives::Byte), |authdata| {
             AuthData(authdata.try_into().unwrap_or([0; AUTHDATA_SIZE]))
         })
     }
@@ -709,7 +709,7 @@ pub struct AssetDsc {
 impl Parsable for AssetDsc {
     type Parser = Map<
         Delimited<
-            All<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
+            Tuple<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
             Permutation<(KeyValue<Unquote>, KeyValue<Unquote>)>,
             StripWhitespace<Tag>,
         >,
@@ -719,7 +719,7 @@ impl Parsable for AssetDsc {
         // комбинаторы парсеров - это круто
         map(
             delimited(
-                all2(
+                tuple2(
                     strip_whitespace(tag("AssetDsc")),
                     strip_whitespace(tag("{")),
                 ),
@@ -739,8 +739,8 @@ pub struct Backet {
 impl Parsable for Backet {
     type Parser = Map<
         Delimited<
-            All<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
-            Permutation<(KeyValue<Unquote>, KeyValue<stdp::U32>)>,
+            Tuple<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
+            Permutation<(KeyValue<Unquote>, KeyValue<primitives::U32>)>,
             StripWhitespace<Tag>,
         >,
         fn((String, std::num::NonZeroU32)) -> Self,
@@ -748,10 +748,10 @@ impl Parsable for Backet {
     fn parser() -> Self::Parser {
         map(
             delimited(
-                all2(strip_whitespace(tag("Backet")), strip_whitespace(tag("{"))),
+                tuple2(strip_whitespace(tag("Backet")), strip_whitespace(tag("{"))),
                 permutation2(
                     key_value("asset_id", unquote()),
-                    key_value("count", stdp::U32),
+                    key_value("count", primitives::U32),
                 ),
                 strip_whitespace(tag("}")),
             ),
@@ -768,8 +768,8 @@ pub struct UserCash {
 impl Parsable for UserCash {
     type Parser = Map<
         Delimited<
-            All<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
-            Permutation<(KeyValue<Unquote>, KeyValue<stdp::U32>)>,
+            Tuple<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
+            Permutation<(KeyValue<Unquote>, KeyValue<primitives::U32>)>,
             StripWhitespace<Tag>,
         >,
         fn((String, std::num::NonZeroU32)) -> Self,
@@ -777,13 +777,13 @@ impl Parsable for UserCash {
     fn parser() -> Self::Parser {
         map(
             delimited(
-                all2(
+                tuple2(
                     strip_whitespace(tag("UserCash")),
                     strip_whitespace(tag("{")),
                 ),
                 permutation2(
                     key_value("user_id", unquote()),
-                    key_value("count", stdp::U32),
+                    key_value("count", primitives::U32),
                 ),
                 strip_whitespace(tag("}")),
             ),
@@ -800,7 +800,7 @@ pub struct UserBacket {
 impl Parsable for UserBacket {
     type Parser = Map<
         Delimited<
-            All<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
+            Tuple<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
             Permutation<(KeyValue<Unquote>, KeyValue<<Backet as Parsable>::Parser>)>,
             StripWhitespace<Tag>,
         >,
@@ -809,7 +809,7 @@ impl Parsable for UserBacket {
     fn parser() -> Self::Parser {
         map(
             delimited(
-                all2(
+                tuple2(
                     strip_whitespace(tag("UserBacket")),
                     strip_whitespace(tag("{")),
                 ),
@@ -832,7 +832,7 @@ pub struct UserBackets {
 impl Parsable for UserBackets {
     type Parser = Map<
         Delimited<
-            All<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
+            Tuple<(StripWhitespace<Tag>, StripWhitespace<Tag>)>,
             Permutation<(
                 KeyValue<Unquote>,
                 KeyValue<List<<Backet as Parsable>::Parser>>,
@@ -844,7 +844,7 @@ impl Parsable for UserBackets {
     fn parser() -> Self::Parser {
         map(
             delimited(
-                all2(
+                tuple2(
                     strip_whitespace(tag("UserBackets")),
                     strip_whitespace(tag("{")),
                 ),
@@ -1148,7 +1148,11 @@ impl Parsable for AppLogJournalKind {
             Map<
                 Preceded<
                     StripWhitespace<Tag>,
-                    Delimited<Tag, Permutation<(KeyValue<Unquote>, KeyValue<stdp::U32>)>, Tag>,
+                    Delimited<
+                        Tag,
+                        Permutation<(KeyValue<Unquote>, KeyValue<primitives::U32>)>,
+                        Tag,
+                    >,
                 >,
                 fn((String, std::num::NonZeroU32)) -> AppLogJournalKind,
             >,
@@ -1161,7 +1165,11 @@ impl Parsable for AppLogJournalKind {
                     StripWhitespace<Tag>,
                     Delimited<
                         Tag,
-                        Permutation<(KeyValue<Unquote>, KeyValue<Unquote>, KeyValue<stdp::U32>)>,
+                        Permutation<(
+                            KeyValue<Unquote>,
+                            KeyValue<Unquote>,
+                            KeyValue<primitives::U32>,
+                        )>,
                         Tag,
                     >,
                 >,
@@ -1203,7 +1211,7 @@ impl Parsable for AppLogJournalKind {
                             tag("{"),
                             permutation2(
                                 key_value("user_id", unquote()),
-                                key_value("authorized_capital", stdp::U32),
+                                key_value("authorized_capital", primitives::U32),
                             ),
                             tag("}"),
                         ),
@@ -1228,7 +1236,7 @@ impl Parsable for AppLogJournalKind {
                             permutation3(
                                 key_value("asset_id", unquote()),
                                 key_value("user_id", unquote()),
-                                key_value("liquidity", stdp::U32),
+                                key_value("liquidity", primitives::U32),
                             ),
                             tag("}"),
                         ),
@@ -1319,17 +1327,17 @@ pub struct LogLine {
 }
 impl Parsable for LogLine {
     type Parser = Map<
-        All<(
+        Tuple<(
             <LogKind as Parsable>::Parser,
-            StripWhitespace<Preceded<Tag, stdp::U32>>,
+            StripWhitespace<Preceded<Tag, primitives::U32>>,
         )>,
         fn((LogKind, std::num::NonZeroU32)) -> Self,
     >;
     fn parser() -> Self::Parser {
         map(
-            all2(
+            tuple2(
                 LogKind::parser(),
-                strip_whitespace(preceded(tag("requestid="), stdp::U32)),
+                strip_whitespace(preceded(tag("requestid="), primitives::U32)),
             ),
             |(kind, request_id)| LogLine { kind, request_id },
         )
@@ -1348,34 +1356,34 @@ mod test {
     #[test]
     fn test_u32() {
         assert_eq!(
-            stdp::U32.parse("411"),
+            primitives::U32.parse("411"),
             Ok(("", NonZeroU32::new(411).unwrap()))
         );
         assert_eq!(
-            stdp::U32.parse("411ab"),
+            primitives::U32.parse("411ab"),
             Ok(("ab", NonZeroU32::new(411).unwrap()))
         );
-        assert_eq!(stdp::U32.parse(""), Err(()));
-        assert_eq!(stdp::U32.parse("-3"), Err(()));
+        assert_eq!(primitives::U32.parse(""), Err(()));
+        assert_eq!(primitives::U32.parse("-3"), Err(()));
         assert_eq!(
-            stdp::U32.parse("0x03"),
+            primitives::U32.parse("0x03"),
             Ok(("", NonZeroU32::new(0x3).unwrap()))
         );
         assert_eq!(
-            stdp::U32.parse("0x03abg"),
+            primitives::U32.parse("0x03abg"),
             Ok(("g", NonZeroU32::new(0x3ab).unwrap()))
         );
-        assert_eq!(stdp::U32.parse("0x"), Err(()));
+        assert_eq!(primitives::U32.parse("0x"), Err(()));
     }
 
     #[test]
     fn test_i32() {
-        assert_eq!(stdp::I32.parse("411"), Ok(("", 411)));
-        assert_eq!(stdp::I32.parse("411ab"), Ok(("ab", 411)));
-        assert_eq!(stdp::I32.parse(""), Err(()));
-        assert_eq!(stdp::I32.parse("-3"), Ok(("", -3)));
-        assert_eq!(stdp::I32.parse("0x03"), Err(()));
-        assert_eq!(stdp::I32.parse("-"), Err(()));
+        assert_eq!(primitives::I32.parse("411"), Ok(("", 411)));
+        assert_eq!(primitives::I32.parse("411ab"), Ok(("ab", 411)));
+        assert_eq!(primitives::I32.parse(""), Err(()));
+        assert_eq!(primitives::I32.parse("-3"), Ok(("", -3)));
+        assert_eq!(primitives::I32.parse("0x03"), Err(()));
+        assert_eq!(primitives::I32.parse("-"), Err(()));
     }
 
     #[test]
@@ -1385,10 +1393,10 @@ mod test {
     }
 
     #[test]
-    fn test_do_unquote_non_escaped() {
-        assert_eq!(do_unquote_non_escaped(r#""411""#), Ok(("", "411")));
-        assert_eq!(do_unquote_non_escaped(r#" "411""#), Err(()));
-        assert_eq!(do_unquote_non_escaped(r#"411"#), Err(()));
+    fn test_unquote_simple() {
+        assert_eq!(unquote_simple(r#""411""#), Ok(("", "411")));
+        assert_eq!(unquote_simple(r#" "411""#), Err(()));
+        assert_eq!(unquote_simple(r#"411"#), Err(()));
     }
 
     #[test]
@@ -1424,7 +1432,7 @@ mod test {
         );
         assert_eq!(strip_whitespace(tag("hello")).parse("hello"), Ok(("", ())));
         assert_eq!(
-            strip_whitespace(stdp::U32).parse(" 42 answer"),
+            strip_whitespace(primitives::U32).parse(" 42 answer"),
             Ok(("answer", nz(42)))
         );
     }
@@ -1432,19 +1440,19 @@ mod test {
     #[test]
     fn test_delimited() {
         assert_eq!(
-            delimited(tag("["), stdp::U32, tag("]")).parse("[0x32]"),
+            delimited(tag("["), primitives::U32, tag("]")).parse("[0x32]"),
             Ok(("", nz(0x32)))
         );
         assert_eq!(
-            delimited(tag("["), stdp::U32, tag("]")).parse("[0x32] nice"),
+            delimited(tag("["), primitives::U32, tag("]")).parse("[0x32] nice"),
             Ok((" nice", nz(0x32)))
         );
         assert_eq!(
-            delimited(tag("["), stdp::U32, tag("]")).parse("0x32]"),
+            delimited(tag("["), primitives::U32, tag("]")).parse("0x32]"),
             Err(())
         );
         assert_eq!(
-            delimited(tag("["), stdp::U32, tag("]")).parse("[0x32"),
+            delimited(tag("["), primitives::U32, tag("]")).parse("[0x32"),
             Err(())
         );
     }
@@ -1452,13 +1460,19 @@ mod test {
     #[test]
     fn test_key_value() {
         assert_eq!(
-            key_value("key", stdp::U32).parse(r#""key":32,"#),
+            key_value("key", primitives::U32).parse(r#""key":32,"#),
             Ok(("", nz(32)))
         );
-        assert_eq!(key_value("key", stdp::U32).parse(r#"key:32,"#), Err(()));
-        assert_eq!(key_value("key", stdp::U32).parse(r#""key":32"#), Err(()));
         assert_eq!(
-            key_value("key", stdp::U32).parse(r#" "key" : 32 , nice"#),
+            key_value("key", primitives::U32).parse(r#"key:32,"#),
+            Err(())
+        );
+        assert_eq!(
+            key_value("key", primitives::U32).parse(r#""key":32"#),
+            Err(())
+        );
+        assert_eq!(
+            key_value("key", primitives::U32).parse(r#" "key" : 32 , nice"#),
             Ok(("nice", nz(32)))
         );
     }
@@ -1466,15 +1480,15 @@ mod test {
     #[test]
     fn test_list() {
         assert_eq!(
-            list(stdp::U32).parse("[1,2,3,4,]"),
+            list(primitives::U32).parse("[1,2,3,4,]"),
             Ok(("", vec![nz(1), nz(2), nz(3), nz(4)]))
         );
         assert_eq!(
-            list(stdp::U32).parse(" [ 1 , 2 , 3 , 4 , ] nice"),
+            list(primitives::U32).parse(" [ 1 , 2 , 3 , 4 , ] nice"),
             Ok(("nice", vec![nz(1), nz(2), nz(3), nz(4)]))
         );
-        assert_eq!(list(stdp::U32).parse("1,2,3,4,"), Err(()));
-        assert_eq!(list(stdp::U32).parse("[]"), Ok(("", vec![])));
+        assert_eq!(list(primitives::U32).parse("1,2,3,4,"), Err(()));
+        assert_eq!(list(primitives::U32).parse("[]"), Ok(("", vec![])));
     }
 
     #[test]
@@ -1488,7 +1502,7 @@ mod test {
     #[test]
     fn test_asset_dsc() {
         assert_eq!(
-            all2(
+            tuple2(
                 strip_whitespace(tag("AssetDsc")),
                 strip_whitespace(tag("{"))
             )

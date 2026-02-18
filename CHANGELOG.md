@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## Phase 14: Naming Improvements
+
+**Scope:** `src/parse.rs`
+
+Renamed five identifiers across `src/parse.rs` to improve naming consistency and align with established conventions (e.g., nom combinator naming). Renamed the `All<T>` struct to `Tuple<T>` and its constructor `all2()` to `tuple2()` to match nom's `tuple` combinator naming and the existing arity-suffix pattern (`alt2`, `permutation2`). Renamed the `stdp` module to `primitives` to make its purpose (parsers for primitive/standard types) self-evident. Renamed `do_unquote()` to `unquote_escaped()` and `do_unquote_non_escaped()` to `unquote_simple()`, replacing the `do_` anti-pattern with names that clearly communicate the distinction: one handles escape sequences and allocates, the other does not. Updated all internal references including type annotations in `Parsable` return types, doc comments, intra-doc links, and test code. Renamed the `test_do_unquote_non_escaped` test function to `test_unquote_simple`. This is a pure renaming refactor -- no behavior changes, no new dependencies, no files other than `src/parse.rs` modified. All 26 tests pass; no test cases deleted. `cargo run -- example.log` output unchanged.
+
 ## Phase 13: Bug Fix + Dead Code Cleanup
 
 **Scope:** `src/parse.rs`
