@@ -126,6 +126,6 @@ fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to open '{}': {}", cli.filename, e))?;
     let logs = analysis::read_log(file, read_mode, request_ids)?;
     println!("got logs:");
-    logs.iter().for_each(|parsed| println!("  {:?}", parsed));
+    logs.iter().for_each(|parsed| println!("  {}", parsed));
     Ok(())
 }

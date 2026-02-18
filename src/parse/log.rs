@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::combinators::primitives;
 use super::combinators::*;
 use super::domain::*;
@@ -71,6 +73,107 @@ pub enum AppLogJournalKind {
     BuyAsset(UserBacket),
     SellAsset(UserBacket),
 }
+impl fmt::Display for LogKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LogKind::System(kind) => write!(f, "System::{kind}"),
+            LogKind::App(kind) => write!(f, "App::{kind}"),
+        }
+    }
+}
+
+impl fmt::Display for SystemLogKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SystemLogKind::Error(kind) => write!(f, "Error {kind}"),
+            SystemLogKind::Trace(kind) => write!(f, "Trace {kind}"),
+        }
+    }
+}
+
+impl fmt::Display for SystemLogTraceKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SystemLogTraceKind::SendRequest(msg) => write!(f, "SendRequest \"{msg}\""),
+            SystemLogTraceKind::GetResponse(msg) => write!(f, "GetResponse \"{msg}\""),
+        }
+    }
+}
+
+impl fmt::Display for SystemLogErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SystemLogErrorKind::NetworkError(msg) => write!(f, "NetworkError: {msg}"),
+            SystemLogErrorKind::AccessDenied(msg) => write!(f, "AccessDenied: {msg}"),
+        }
+    }
+}
+
+impl fmt::Display for AppLogKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AppLogKind::Error(kind) => write!(f, "Error {kind}"),
+            AppLogKind::Trace(kind) => write!(f, "Trace {kind}"),
+            AppLogKind::Journal(kind) => write!(f, "Journal {kind}"),
+        }
+    }
+}
+
+impl fmt::Display for AppLogErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AppLogErrorKind::LackOf(msg) => write!(f, "LackOf: {msg}"),
+            AppLogErrorKind::SystemError(msg) => write!(f, "SystemError: {msg}"),
+        }
+    }
+}
+
+impl fmt::Display for AppLogTraceKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AppLogTraceKind::Connect(auth) => write!(f, "Connect {auth}"),
+            AppLogTraceKind::SendRequest(msg) => write!(f, "SendRequest \"{msg}\""),
+            AppLogTraceKind::Check(announcements) => write!(f, "Check {announcements}"),
+            AppLogTraceKind::GetResponse(msg) => write!(f, "GetResponse \"{msg}\""),
+        }
+    }
+}
+
+impl fmt::Display for AppLogJournalKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AppLogJournalKind::CreateUser {
+                user_id,
+                authorized_capital,
+            } => write!(f, "CreateUser user={user_id}, capital={authorized_capital}"),
+            AppLogJournalKind::DeleteUser { user_id } => {
+                write!(f, "DeleteUser user={user_id}")
+            }
+            AppLogJournalKind::RegisterAsset {
+                asset_id,
+                user_id,
+                liquidity,
+            } => write!(
+                f,
+                "RegisterAsset asset={asset_id}, user={user_id}, liquidity={liquidity}"
+            ),
+            AppLogJournalKind::UnregisterAsset { asset_id, user_id } => {
+                write!(f, "UnregisterAsset asset={asset_id}, user={user_id}")
+            }
+            AppLogJournalKind::DepositCash(cash) => write!(f, "DepositCash {cash}"),
+            AppLogJournalKind::WithdrawCash(cash) => write!(f, "WithdrawCash {cash}"),
+            AppLogJournalKind::BuyAsset(backet) => write!(f, "BuyAsset {backet}"),
+            AppLogJournalKind::SellAsset(backet) => write!(f, "SellAsset {backet}"),
+        }
+    }
+}
+
+impl fmt::Display for LogLine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[req={}] {}", self.request_id, self.kind)
+    }
+}
+
 impl Parsable for SystemLogErrorKind {
     type Parser = Preceded<
         Tag,
