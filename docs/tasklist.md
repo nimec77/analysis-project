@@ -27,7 +27,7 @@
 | :green_circle: | 14 | Naming improvements | `src/parse.rs` | — |
 | :green_circle: | 15 | Modularity (split `parse.rs`) | `src/parse.rs`, `src/parse/*.rs` | Phase 14 |
 | :green_circle: | 16 | Newtype pattern (`UserId`, `AssetId`) | `src/parse/*.rs` | Phase 15 |
-| :white_circle: | 17 | Error handling (`ParseError`, `anyhow`) | `src/parse/*.rs`, `src/lib.rs`, `src/main.rs`, `Cargo.toml` | — |
+| :green_circle: | 17 | Error handling (`ParseError`, `anyhow`) | `src/parse/*.rs`, `src/lib.rs`, `src/main.rs`, `Cargo.toml` | — |
 | :white_circle: | 18 | Strategy pattern (`LogFilter` trait) | `src/lib.rs` | — |
 | :white_circle: | 19 | CLI argument parsing (`clap`) | `src/main.rs`, `Cargo.toml` | Phase 18 |
 | :white_circle: | 20 | `Display` trait for log types | `src/parse/*.rs` | Phase 15 |
@@ -36,7 +36,7 @@
 
 Legend: :white_circle: pending | :large_blue_circle: in progress | :green_circle: done
 
-**Current Phase:** 17
+**Current Phase:** 18
 
 ---
 
@@ -256,16 +256,16 @@ Uses edition 2024 module paths (NO `mod.rs`).
 
 ## Phase 17: Error handling (`ParseError`, `anyhow`)
 
-- [ ] Define `ParseError` enum with variants: `UnexpectedInput`, `IncompleteInput`, `InvalidValue` (each with `&'static str` context)
-- [ ] Add `thiserror = "2"` to `[dependencies]` in `Cargo.toml`
-- [ ] Replace `Result<T, ()>` with `Result<T, ParseError>` in `Parser` trait and all implementations
-- [ ] Update all `Err(())` → appropriate `ParseError` variants
-- [ ] Update all `ok_or(())` and `map_err(|_| ())` calls
-- [ ] Add `anyhow = "1"` to `[dependencies]` in `Cargo.toml`
-- [ ] Fix `main.rs`: replace `args[1]` panic with `.get(1)` + usage message
-- [ ] Fix `main.rs`: replace `.unwrap()` on file open with error message
-- [ ] Remove hardcoded demo code from `main.rs` (lines 54-58)
-- [ ] Change `main()` to `fn main() -> anyhow::Result<()>`
+- [x] Define `ParseError` enum with variants: `UnexpectedInput`, `IncompleteInput`, `InvalidValue` (each with `&'static str` context)
+- [x] Add `thiserror = "2"` to `[dependencies]` in `Cargo.toml`
+- [x] Replace `Result<T, ()>` with `Result<T, ParseError>` in `Parser` trait and all implementations
+- [x] Update all `Err(())` → appropriate `ParseError` variants
+- [x] Update all `ok_or(())` and `map_err(|_| ())` calls
+- [x] Add `anyhow = "1"` to `[dependencies]` in `Cargo.toml`
+- [x] Fix `main.rs`: replace `args[1]` panic with `.get(1)` + usage message
+- [x] Fix `main.rs`: replace `.unwrap()` on file open with error message
+- [x] Remove hardcoded demo code from `main.rs` (lines 54-58)
+- [x] Change `main()` to `fn main() -> anyhow::Result<()>`
 
 **Verify:** `cargo test && cargo run -- example.log`
 
